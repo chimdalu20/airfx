@@ -8,6 +8,7 @@ import { createControlsPanel } from './ui/controls-panel.js';
 import { createMeters } from './ui/meters.js';
 import { createOverlay } from './ui/overlay.js';
 import { SMOOTH, DEBOUNCE, PRESENCE } from './config.js';
+import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
 
 let profile = DEFAULT_PROFILE;
 export const getProfile = () => profile;
@@ -51,6 +52,10 @@ async function start() {
     const camera = new CameraGestureSource(video);
     await camera.init();
 
+    const saved = loadProfile();
+    if (saved) profile = saved;
+    let latestRaw = null;
+
     const rack = createControlsPanel(document.getElementById('rack'));
     const meters = createMeters(document.getElementById('meters'));
     const overlay = createOverlay(document.getElementById('overlay'), video);
@@ -62,6 +67,7 @@ async function start() {
     document.getElementById('app').hidden = false;
 
     camera.start((frame) => {
+      latestRaw = frame;
       const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
       const snapshot = mapSignalsToSnapshot(signals);
       engine.apply(snapshot);
@@ -71,6 +77,9 @@ async function start() {
     });
 
     document.getElementById('panicBtn').addEventListener('click', () => engine.panic());
+    document.getElementById('calibrateBtn').addEventListener('click', async () => {
+      profile = await runCalibration({ getLatestRaw: () => latestRaw });
+    });
     window.__airfx = { ctx, engine, camera, setProfile };
   } catch (e) {
     startError.hidden = false;
