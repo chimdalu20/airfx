@@ -6,9 +6,11 @@ export function createOverlay(canvas, video) {
     canvas.width = video.videoWidth || canvas.clientWidth;
     canvas.height = video.videoHeight || canvas.clientHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const r = Math.max(3, canvas.width / 220);
     ctx.strokeStyle = '#4f7cff';
-    ctx.fillStyle = '#8fb0ff';
-    ctx.lineWidth = 2;
+    ctx.fillStyle = '#9ec1ff';
+    ctx.lineWidth = Math.max(2, canvas.width / 320);
+    ctx.lineJoin = 'round';
     for (const lm of hands) {
       for (const [a, b] of CONNECTIONS) {
         ctx.beginPath();
@@ -18,7 +20,7 @@ export function createOverlay(canvas, video) {
       }
       for (const p of lm) {
         ctx.beginPath();
-        ctx.arc(p.x * canvas.width, p.y * canvas.height, 3, 0, Math.PI * 2);
+        ctx.arc(p.x * canvas.width, p.y * canvas.height, r, 0, Math.PI * 2);
         ctx.fill();
       }
     }

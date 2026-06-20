@@ -91,11 +91,6 @@ async function start() {
 
     const video = document.getElementById('video');
     const camera = new CameraGestureSource(video);
-    await camera.init();
-
-    const saved = loadProfile();
-    if (saved) profile = saved;
-    let latestRaw = null;
 
     const rack = createControlsPanel(document.getElementById('rack'));
     const meters = createMeters(document.getElementById('meters'));
@@ -104,8 +99,18 @@ async function start() {
     const leftPipe = makeHandPipeline('left');
     const rightPipe = makeHandPipeline('right');
 
+    // Reveal the stage immediately so the webcam is visible while the hand model loads.
     document.getElementById('startScreen').hidden = true;
     document.getElementById('app').hidden = false;
+    const status = document.getElementById('status');
+    if (status) status.textContent = 'Starting camera + loading hand model…';
+
+    await camera.init();
+
+    const saved = loadProfile();
+    if (saved) profile = saved;
+    let latestRaw = null;
+    if (status) status.textContent = '';
 
     camera.start((frame) => {
       latestRaw = frame;
@@ -131,6 +136,9 @@ async function start() {
     presetSel.addEventListener('change', () => applyPreset(presetSel.value));
     window.__airfx = { ctx, engine, camera, setProfile };
   } catch (e) {
+    // Revert to the start screen so the error is visible and retryable.
+    document.getElementById('app').hidden = true;
+    document.getElementById('startScreen').hidden = false;
     startError.hidden = false;
     startError.textContent = `Could not start: ${e.name} – ${e.message}`;
   }

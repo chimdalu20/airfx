@@ -20,8 +20,26 @@ const LAYOUT = [
   { key: 'tremolo', title: 'Tremolo', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
 ];
 
+const pct = (v) => `${Math.round(v * 100)}%`;
+
+// Human-readable live value per knob, read straight from the raw snapshot.
+function formatValue(fxKey, knobKey, s) {
+  if (fxKey === 'filter') return `${Math.round(s.filter.cutoff)} Hz`;
+  if (fxKey === 'reverb') return s.reverb.active ? pct(s.reverb.wet) : 'off';
+  if (fxKey === 'delay') {
+    if (!s.delay.active) return 'off';
+    return knobKey === 'mix' ? pct(s.delay.mix) : pct(s.delay.feedback);
+  }
+  if (fxKey === 'tremolo') {
+    if (!s.tremolo.active) return 'off';
+    return knobKey === 'rate' ? `${s.tremolo.rate.toFixed(1)} Hz` : pct(s.tremolo.depth);
+  }
+  return '';
+}
+
 export function createControlsPanel(rootEl) {
   const dials = {};
+  const vals = {};
   const groups = {};
   for (const fx of LAYOUT) {
     const card = document.createElement('div');
@@ -31,9 +49,10 @@ export function createControlsPanel(rootEl) {
     for (const [knobKey, label] of fx.knobs) {
       const k = document.createElement('div');
       k.className = 'knob';
-      k.innerHTML = `<div class="dial"></div><span>${label}</span>`;
+      k.innerHTML = `<div class="dial"></div><span class="lbl">${label}</span><span class="val">–</span>`;
       knobsEl.appendChild(k);
       dials[`${fx.key}.${knobKey}`] = k.querySelector('.dial');
+      vals[`${fx.key}.${knobKey}`] = k.querySelector('.val');
     }
     rootEl.appendChild(card);
     groups[fx.key] = card;
@@ -47,6 +66,7 @@ export function createControlsPanel(rootEl) {
         const dial = dials[`${fx.key}.${knobKey}`];
         dial.style.setProperty('--angle', `${angles[fx.key][knobKey]}deg`);
         dial.dataset.angle = angles[fx.key][knobKey].toFixed(1);
+        vals[`${fx.key}.${knobKey}`].textContent = formatValue(fx.key, knobKey, snapshot);
       }
     }
   }
