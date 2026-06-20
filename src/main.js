@@ -42,9 +42,17 @@ const startError = document.getElementById('startError');
 async function start() {
   startError.hidden = true;
   try {
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Camera/mic need HTTPS or localhost. Serve over a secure origin.');
+    }
     const audioStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
+    const ms = audioStream.getAudioTracks()[0].getSettings();
+    if (ms.echoCancellation || ms.noiseSuppression || ms.autoGainControl) {
+      document.getElementById('warn').textContent =
+        '🎧 Use headphones. (Browser kept echo/noise processing on – headphones still fix it.)';
+    }
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     await ctx.resume();
     const engine = createAudioEngine(ctx, audioStream);
@@ -89,6 +97,11 @@ async function start() {
 
     camera.start((frame) => {
       latestRaw = frame;
+      // FPS sampling
+      window.__airfx_fps = window.__airfx_fps || { last: frame.tMs, n: 0, fps: 0 };
+      const F = window.__airfx_fps;
+      F.n++;
+      if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; if (F.fps < 15) console.warn('Low FPS:', F.fps); }
       const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
       const snapshot = mapSignalsToSnapshot(signals);
       engine.apply(snapshot);
