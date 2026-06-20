@@ -18,7 +18,15 @@ video, #overlay { width: 100%; height: auto; border-radius: 10px; transform: sca
 .knobs { display: flex; gap: .8rem; flex-wrap: wrap; }
 .knob { text-align: center; font-size: .7rem; }
 .dial { width: 52px; height: 52px; border-radius: 50%; background: #2b2e38; position: relative; margin: 0 auto .25rem; }
-.dial::after { content: ""; position: absolute; left: 50%; top: 6px; width: 3px; height: 18px; background: #8fb0ff; transform-origin: 50% 20px; transform: translateX(-50%) rotate(0deg); }
+.dial::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 6px;
+  width: 3px; height: 18px;
+  background: #8fb0ff;
+  transform-origin: 50% 20px;
+  transform: translateX(-50%) rotate(var(--angle, 0deg));
+}
 .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 button { background: #2b2e38; color: #e8e8ea; border: 0; border-radius: 8px; padding: .5rem .8rem; cursor: pointer; }
 button.danger { background: #6a2330; }
