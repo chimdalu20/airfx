@@ -7,3 +7,9 @@ export const DEBOUNCE = { fingerFrames: 4 };
 export const PRESENCE = { enter: 0.6, exit: 0.4 };
 export const PARAM = { timeConstant: 0.03 };
 export const KNOB = { sweepDeg: 270 };
+
+export const PRESETS = {
+  Subtle:  { reverbWetMax: 0.5, delayFeedbackMax: 0.35, tremoloDepthMax: 0.6 },
+  Lush:    { reverbWetMax: 0.9, delayFeedbackMax: 0.55, tremoloDepthMax: 1.0 },
+  Extreme: { reverbWetMax: 1.0, delayFeedbackMax: 0.85, tremoloDepthMax: 1.0 },
+};

@@ -8,12 +8,20 @@ import { mapSignalsToSnapshot } from './mapping/mapping.js';
 import { createControlsPanel } from './ui/controls-panel.js';
 import { createMeters } from './ui/meters.js';
 import { createOverlay } from './ui/overlay.js';
-import { SMOOTH, DEBOUNCE, PRESENCE } from './config.js';
+import { SMOOTH, DEBOUNCE, PRESENCE, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
 import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
 
 let profile = DEFAULT_PROFILE;
 export const getProfile = () => profile;
 export const setProfile = (p) => { profile = p; };
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  REVERB.wetMax = p.reverbWetMax;
+  DELAY.feedbackMax = p.delayFeedbackMax;
+  TREMOLO.depthMax = p.tremoloDepthMax;
+}
 
 function makeHandPipeline(side) {
   const heightF = new OneEuroFilter(SMOOTH);
@@ -114,6 +122,9 @@ async function start() {
     document.getElementById('calibrateBtn').addEventListener('click', async () => {
       profile = await runCalibration({ getLatestRaw: () => latestRaw });
     });
+    const presetSel = document.getElementById('preset');
+    applyPreset(presetSel.value);
+    presetSel.addEventListener('change', () => applyPreset(presetSel.value));
     window.__airfx = { ctx, engine, camera, setProfile };
   } catch (e) {
     startError.hidden = false;
