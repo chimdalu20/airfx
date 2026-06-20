@@ -25,6 +25,9 @@ trigger — every control is a continuous sweep.
 - Free / open-source / low-resource; loads easily on the web.
 - Fun, experimental, expressive desktop demo that feels musical.
 - Polished tool: presets, per-user calibration, recording/export, tuned UI.
+- **Live, animated effect controls:** an on-screen rack of knobs/sliders (one group per
+  effect — reverb, delay, tremolo, filter) that move in real time as the hands move, so
+  the user *sees* each parameter change while gesturing.
 - Testable without a camera (synthetic gesture source).
 
 **Non-goals (v1)**
@@ -136,8 +139,11 @@ the app is testable and demoable without a camera.
 - **`calibration`** — short guided capture of near/far distance and low/high height;
   persisted to `localStorage`; re-runnable.
 - **`ui`** — `<video>` + landmark overlay canvas; live meters (detected fingers per hand,
-  height, distance, current effect values); Start button; headphone warning; presets;
-  record/export; calibration entry. Desktop-first; window-resize-safe.
+  height, distance); Start button; headphone warning; presets; record/export; calibration
+  entry. Desktop-first; window-resize-safe.
+- **`controls-panel`** — the live, animated effect rack (see §6.1). One control group per
+  effect (reverb / delay / tremolo / filter), each knob/slider reflecting its current
+  gesture-driven value in real time, plus an active/bypassed indicator per effect.
 
 ### Data flow
 
@@ -157,6 +163,38 @@ run on the audio render thread. Pace inference with `requestVideoFrameCallback` 
 `requestAnimationFrame`). **Optimization (later):** move inference to a Web Worker with
 `OffscreenCanvas` *only if the visuals/UI stutter* — and feature-detect the worker GPU
 delegate, falling back to main-thread inference if `OffscreenCanvas`/WebGL-in-worker fails.
+
+## 6.1 Live effect controls (animated rack)
+
+The `controls-panel` renders one control group per effect; every knob/slider mirrors the
+**current gesture-driven value** so the user watches the controls move as they move their
+hands. Controls are **reflective by default** (driven by gestures), with optional manual
+override as a future enhancement (see §11).
+
+| Effect | Knobs/sliders shown | Driven by |
+|---|---|---|
+| **Filter** | cutoff (Hz), resonance | left-hand height (cutoff); resonance fixed/preset |
+| **Reverb** | amount/wet, (fixed decay readout) | left-hand height (character) + distance (master wet) |
+| **Delay** | mix, time, feedback | left-hand distance (mix); time/feedback preset |
+| **Tremolo** | rate (Hz), depth | right-hand height (rate), distance (depth) |
+
+**How it stays smooth and cheap (decoupled from audio):**
+- The panel runs its own `requestAnimationFrame` render loop and, each frame, **reads the
+  latest smoothed parameter values** the `mapping`/`audio-engine` already computed. It does
+  **not** add audio work or re-read landmarks — it only visualizes existing state.
+- Each knob is a lightweight DOM/SVG element updated via **CSS `transform: rotate()`** (or a
+  stroke-dashoffset arc); no per-frame layout thrash, no canvas redraw cost beyond transforms.
+- Values are displayed from the same smoothed signal feeding the audio params, so the knob
+  motion matches what the user hears (no second, divergent smoothing).
+- Each group shows an **active vs bypassed** state that follows the discrete gesture
+  (e.g. reverb lights up at 1 finger; delay lights up at 2; tremolo lights up when the right
+  hand is present), with the same hysteresis/debounce as the audio side so it doesn't flicker.
+
+**Interface:** `controlsPanel.update(state)` where `state` is the per-frame snapshot
+`{ filter:{cutoff, q}, reverb:{wet}, delay:{mix, time, feedback, active}, tremolo:{rate,
+depth, active} }` — the same snapshot the audio engine consumes, so panel and audio never
+diverge. This keeps the panel a pure *view* of engine state and independently testable
+(feed a snapshot, assert knob angles).
 
 ## 7. Error handling & UX guards
 
@@ -198,6 +236,8 @@ toward it and offers re-calibration at any time.
   Driven by `SyntheticGestureSource`.
 - **Integration (manual + scripted):** `SyntheticGestureSource` feeds known gesture
   sequences; assert the audio graph receives expected target values.
+- **Controls panel (pure view):** feed `controlsPanel.update(snapshot)` known snapshots and
+  assert knob angles / active states match — independent of audio and camera.
 - **UI:** Playwright at a desktop viewport — Start gate, meters render, no console errors,
   no horizontal overflow on resize.
 - **On-hardware manual checklist:** real latency (beep-loopback), feedback check on
@@ -210,11 +250,13 @@ toward it and offers re-calibration at any time.
    limiter; verify no feedback on headphones.
 2. **Tracking + overlay + meters** — landmarks, finger count, height + distance signals,
    smoothing; build the `SyntheticGestureSource` alongside for testing.
-3. **Effects one at a time** — filter → reverb → delay → tremolo, each wired to its
-   mapping and ramped cleanly.
+3. **Effects + their live knobs, one at a time** — filter → reverb → delay → tremolo. For
+   each: wire the mapping, ramp the audio param cleanly, **and render its animated control
+   group in the rack** so the knob visibly moves with the gesture before moving to the next
+   effect. (Build the `controls-panel` shell + rAF read loop at the start of this step.)
 4. **Calibration** + per-user normalization.
 5. **Polish** — presets, record/export, headphone warning, low-FPS degrade, panic mute,
-   curve tuning.
+   curve tuning, and rack visual polish (active/bypassed states, layout, labels).
 6. **Test pass** — mapping/smoothing unit tests, Playwright UI check, on-hardware
    latency/feedback/lighting checklist, low-end laptop run.
 
