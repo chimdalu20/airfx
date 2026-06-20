@@ -1,0 +1,9 @@
+export const FILTER = { min: 80, max: 12000, q: 1.0 };
+export const REVERB = { wetMax: 0.9, heightFloor: 0.3 };
+export const DELAY = { time: 0.28, feedbackMin: 0.15, feedbackMax: 0.55, mixMin: 0.0, mixMax: 0.5 };
+export const TREMOLO = { rateMin: 0.1, rateMax: 12, depthMax: 1.0 };
+export const SMOOTH = { minCutoff: 1.2, beta: 0.6, dCutoff: 1.0 };
+export const DEBOUNCE = { fingerFrames: 4 };
+export const PRESENCE = { enter: 0.6, exit: 0.4 };
+export const PARAM = { timeConstant: 0.03 };
+export const KNOB = { sweepDeg: 270 };
