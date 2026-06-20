@@ -1,4 +1,5 @@
 import { createAudioEngine } from './audio/audio-engine.js';
+import { createRecorder } from './audio/recorder.js';
 import { CameraGestureSource } from './gestures/camera-source.js';
 import { applyCalibration, DEFAULT_PROFILE } from './calibration/profile.js';
 import { OneEuroFilter } from './smoothing/one-euro.js';
@@ -47,6 +48,26 @@ async function start() {
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     await ctx.resume();
     const engine = createAudioEngine(ctx, audioStream);
+
+    const recorder = createRecorder(engine.recorderStream);
+    const recordBtn = document.getElementById('recordBtn');
+    recordBtn.addEventListener('click', async () => {
+      if (!recorder.active) {
+        recorder.start();
+        recordBtn.textContent = '■ Stop';
+        recordBtn.classList.add('danger');
+      } else {
+        const blob = await recorder.stop();
+        recordBtn.textContent = '● Record';
+        recordBtn.classList.remove('danger');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
 
     const video = document.getElementById('video');
     const camera = new CameraGestureSource(video);
