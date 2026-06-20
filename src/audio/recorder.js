@@ -12,6 +12,9 @@ export function createRecorder(stream) {
       rec.start();
     },
     stop() {
+      if (!rec || rec.state === 'inactive') {
+        return Promise.resolve(new Blob([], { type: mimeType || 'audio/webm' }));
+      }
       return new Promise((resolve) => {
         rec.onstop = () => resolve(new Blob(chunks, { type: mimeType || 'audio/webm' }));
         rec.stop();

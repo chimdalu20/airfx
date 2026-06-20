@@ -56,7 +56,8 @@ async function start() {
     const audioStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
-    const ms = audioStream.getAudioTracks()[0].getSettings();
+    const track0 = audioStream.getAudioTracks()[0];
+    const ms = track0 ? track0.getSettings() : {};
     if (ms.echoCancellation || ms.noiseSuppression || ms.autoGainControl) {
       document.getElementById('warn').textContent =
         '🎧 Use headphones. (Browser kept echo/noise processing on – headphones still fix it.)';
@@ -73,15 +74,18 @@ async function start() {
         recordBtn.textContent = '■ Stop';
         recordBtn.classList.add('danger');
       } else {
-        const blob = await recorder.stop();
-        recordBtn.textContent = '● Record';
-        recordBtn.classList.remove('danger');
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
-        a.click();
-        URL.revokeObjectURL(url);
+        try {
+          const blob = await recorder.stop();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } finally {
+          recordBtn.textContent = '● Record';
+          recordBtn.classList.remove('danger');
+        }
       }
     });
 
