@@ -46,8 +46,6 @@ export function createControlsPanel(rootEl) {
       for (const [knobKey] of fx.knobs) {
         const dial = dials[`${fx.key}.${knobKey}`];
         dial.style.setProperty('--angle', `${angles[fx.key][knobKey]}deg`);
-        const after = `rotate(${angles[fx.key][knobKey]}deg)`;
-        dial.style.transform = ''; // dial itself stays; pointer is the ::after pseudo
         dial.dataset.angle = angles[fx.key][knobKey].toFixed(1);
       }
     }
