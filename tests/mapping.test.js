@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mapSignalsToSnapshot } from '../src/mapping/mapping.js';
 
 const sig = (lh, rh) => ({ left: { present: true, heightNorm: lh }, right: { present: true, heightNorm: rh } });
-const ALL = { filter: true, reverb: true, delay: true, tremolo: true };
+const ALL = { filter: true, reverb: true, delay: true, tremolo: true, compressor: true };
 
 test('filter cutoff (log) reaches max at 75% height (fullAt), min at 0', () => {
   assert.ok(Math.abs(mapSignalsToSnapshot(sig(0, 0), ALL).filter.cutoff - 80) < 1e-6);
@@ -38,6 +38,18 @@ test('tremolo depth scales with right-hand height, 0 when disabled', () => {
   const hi = mapSignalsToSnapshot(sig(0, 0.75), ALL).tremolo.depth;
   assert.ok(hi > lo);
   assert.equal(mapSignalsToSnapshot(sig(0, 1), { ...ALL, tremolo: false }).tremolo.depth, 0);
+});
+
+test('compressor: more right-hand height squashes harder; off bypasses', () => {
+  const lo = mapSignalsToSnapshot(sig(0, 0.2), ALL).compressor;
+  const hi = mapSignalsToSnapshot(sig(0, 0.75), ALL).compressor;
+  assert.equal(hi.active, true);
+  assert.ok(hi.ratio > lo.ratio); // more height -> higher ratio
+  assert.ok(hi.threshold < lo.threshold); // more height -> lower threshold (more compression)
+  const off = mapSignalsToSnapshot(sig(0, 1), { ...ALL, compressor: false }).compressor;
+  assert.equal(off.active, false);
+  assert.equal(off.ratio, 1);
+  assert.equal(off.threshold, 0);
 });
 
 test('default enabled mask is all-on', () => {

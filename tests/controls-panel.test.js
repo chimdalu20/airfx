@@ -8,6 +8,7 @@ test('computeDialAngles maps a full snapshot to centered angles', () => {
     reverb: { wet: 1.3, active: true },
     delay: { mix: 0.5, time: 0.28, feedback: 0.55, active: true },
     tremolo: { rate: 12, depth: 1, active: true },
+    compressor: { amount: 1, threshold: -40, ratio: 12, active: true },
   });
   assert.ok(Math.abs(angles.filter.cutoff - 135) < 1e-6);   // max -> +135
   assert.ok(Math.abs(angles.reverb.wet - 135) < 1e-6);

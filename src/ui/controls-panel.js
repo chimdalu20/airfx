@@ -10,6 +10,7 @@ export function computeDialAngles(snapshot) {
     reverb: { wet: a(d.reverb.wet), active: d.reverb.active },
     delay: { mix: a(d.delay.mix), feedback: a(d.delay.feedback), active: d.delay.active },
     tremolo: { rate: a(d.tremolo.rate), depth: a(d.tremolo.depth), active: d.tremolo.active },
+    compressor: { amount: a(d.compressor.amount), active: d.compressor.active },
   };
 }
 
@@ -18,6 +19,7 @@ const LAYOUT = [
   { key: 'reverb', title: 'Reverb', hand: 'left', accent: '#9b7bff', knobs: [['wet', 'Amount']] },
   { key: 'delay', title: 'Delay', hand: 'left', accent: '#4f9bff', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
   { key: 'tremolo', title: 'Tremolo', hand: 'right', accent: '#ffb14e', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
+  { key: 'compressor', title: 'Compressor', hand: 'right', accent: '#5fd38a', knobs: [['amount', 'Amount']] },
 ];
 
 const pct = (v) => `${Math.round(v * 100)}%`;
@@ -34,6 +36,7 @@ function formatValue(fxKey, knobKey, s) {
     if (!s.tremolo.active) return 'off';
     return knobKey === 'rate' ? `${s.tremolo.rate.toFixed(1)} Hz` : pct(s.tremolo.depth);
   }
+  if (fxKey === 'compressor') return s.compressor.active ? `${s.compressor.ratio.toFixed(1)}:1` : 'off';
   return '';
 }
 
@@ -55,7 +58,7 @@ function knobMarkup(id, label) {
 export function createControlsPanel(leftEl, rightEl = leftEl) {
   // Per-effect on/off, toggled by clicking the card. Exposed via getEnabled() so the
   // main loop can gate the mapping. All effects start enabled.
-  const enabled = { filter: true, reverb: true, delay: true, tremolo: true };
+  const enabled = Object.fromEntries(LAYOUT.map((fx) => [fx.key, true]));
   const arcs = {};
   const ptrs = {};
   const vals = {};

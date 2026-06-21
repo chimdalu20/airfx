@@ -24,5 +24,6 @@ export function snapshotToDisplay(s) {
       depth: linNorm(s.tremolo.depth, 0, TREMOLO.depthMax),
       active: s.tremolo.active,
     },
+    compressor: { amount: clamp(s.compressor.amount, 0, 1), active: s.compressor.active },
   };
 }

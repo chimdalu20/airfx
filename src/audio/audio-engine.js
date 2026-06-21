@@ -1,10 +1,19 @@
-import { PARAM } from '../config.js';
+import { PARAM, COMPRESSOR } from '../config.js';
 import { generateImpulseResponse } from './reverb-ir.js';
 
 // `sourceNode` is any AudioNode to process (e.g. a MediaElementAudioSourceNode
 // from an uploaded <audio> track, or a MediaStreamAudioSourceNode from a mic).
 export function createAudioEngine(ctx, sourceNode) {
   const source = sourceNode;
+
+  // User compressor (distinct from the safety limiter on the master). Bypassed at
+  // threshold 0 / ratio 1; apply() squashes more as the right hand rises.
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = 0;
+  comp.knee.value = COMPRESSOR.knee;
+  comp.ratio.value = 1;
+  comp.attack.value = COMPRESSOR.attack;
+  comp.release.value = COMPRESSOR.release;
 
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
@@ -51,8 +60,9 @@ export function createAudioEngine(ctx, sourceNode) {
 
   const dest = ctx.createMediaStreamDestination();
 
-  // Routing: source -> filter -> tremGain -> {dry, delay, reverb} -> master -> limiter -> out + recorder
-  source.connect(filter);
+  // Routing: source -> comp -> filter -> tremGain -> {dry, delay, reverb} -> master -> limiter -> out + recorder
+  source.connect(comp);
+  comp.connect(filter);
   filter.connect(tremGain);
   tremGain.connect(dry).connect(master);
   tremGain.connect(delay);
@@ -77,6 +87,8 @@ export function createAudioEngine(ctx, sourceNode) {
     const depth = snap.tremolo.active ? snap.tremolo.depth : 0;
     lfoDepth.gain.setTargetAtTime(depth / 2, t, tc);
     tremGain.gain.setTargetAtTime(1 - depth / 2, t, tc);
+    comp.threshold.setTargetAtTime(snap.compressor.active ? snap.compressor.threshold : 0, t, tc);
+    comp.ratio.setTargetAtTime(snap.compressor.active ? snap.compressor.ratio : 1, t, tc);
   }
 
   function panic() { master.gain.setTargetAtTime(0, ctx.currentTime, 0.01); }
