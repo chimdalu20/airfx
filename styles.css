@@ -140,3 +140,18 @@ select#preset { background: #1b2029; color: var(--text); border: 1px solid var(-
 .cal-actions { display: flex; gap: .5rem; justify-content: center; }
 .cal-capture { background: linear-gradient(180deg, #5ff0df, #2bb6a8); color: #06121a; font-weight: 800; border: 0; border-radius: 10px; padding: .6rem 1.3rem; cursor: pointer; }
 .cal-capture:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.5); }
+
+/* Mode toggle (Air vs Grab) */
+.modes { display: flex; gap: .4rem; }
+.mode-btn { flex: 1; background: #1b2029; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: .5rem; font-weight: 700; cursor: pointer; }
+.mode-btn.on { background: linear-gradient(180deg, #37e0cf, #2bb6a8); color: #06121a; border-color: transparent; }
+
+/* Grab-mode virtual-hand cursors */
+.grab-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+.grab-cursor { position: fixed; transform: translate(-50%, -50%); display: grid; place-items: center; pointer-events: none; }
+.grab-cursor .gc-ring { width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--c); box-shadow: 0 0 12px var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: width .08s, height .08s, background .08s; }
+.grab-cursor .gc-label { position: absolute; font-size: .65rem; font-weight: 800; color: var(--c); }
+.grab-cursor.left { --c: #8fb0ff; }
+.grab-cursor.right { --c: #ffb14e; }
+.grab-cursor.pinch .gc-ring { width: 26px; height: 26px; background: var(--c); }
+.grab-cursor.hold .gc-ring { box-shadow: 0 0 24px var(--c); }

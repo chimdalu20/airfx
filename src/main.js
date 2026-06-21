@@ -4,7 +4,7 @@ import { CameraGestureSource } from './gestures/camera-source.js';
 import { applyCalibration, DEFAULT_PROFILE } from './calibration/profile.js';
 import { OneEuroFilter } from './smoothing/one-euro.js';
 import { Hysteresis } from './smoothing/debounce.js';
-import { mapSignalsToSnapshot } from './mapping/mapping.js';
+import { mapSignalsToSnapshot, mapKnobsToSnapshot } from './mapping/mapping.js';
 import { createControlsPanel } from './ui/controls-panel.js';
 import { createMeters } from './ui/meters.js';
 import { createOverlay } from './ui/overlay.js';
@@ -12,6 +12,7 @@ import { SMOOTH, PRESENCE, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
 import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
 import { createOnboarding } from './ui/onboarding.js';
 import { createVoice } from './ui/voice.js';
+import { createGrab } from './ui/grab.js';
 
 let profile = DEFAULT_PROFILE;
 export const getProfile = () => profile;
@@ -99,6 +100,8 @@ async function start() {
     );
     const meters = createMeters(document.getElementById('meters'));
     const overlay = createOverlay(document.getElementById('overlay'), video);
+    const grab = createGrab({ rack });
+    let mode = 'air'; // 'air' = hand-height intensity; 'grab' = virtual hands grab knobs
 
     const leftPipe = makeHandPipeline('left');
     const rightPipe = makeHandPipeline('right');
@@ -133,10 +136,16 @@ async function start() {
       }
       try {
         const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
-        const snapshot = mapSignalsToSnapshot(signals, rack.getEnabled());
+        meters.update(signals);
+        let snapshot;
+        if (mode === 'grab') {
+          grab.update(frame);
+          snapshot = mapKnobsToSnapshot(grab.getValues(), rack.getEnabled());
+        } else {
+          snapshot = mapSignalsToSnapshot(signals, rack.getEnabled());
+        }
         engine.apply(snapshot);
         rack.update(snapshot);
-        meters.update(signals);
         overlay.draw(frame._landmarks || []);
       } catch (err) {
         if (debugEl) { debugEl.classList.add('err'); debugEl.textContent = `⚠ render: ${err.message}`; }
@@ -151,6 +160,15 @@ async function start() {
     const presetSel = document.getElementById('preset');
     applyPreset(presetSel.value);
     presetSel.addEventListener('change', () => applyPreset(presetSel.value));
+
+    function setMode(m) {
+      mode = m;
+      grab.setActive(m === 'grab');
+      document.getElementById('modeAir').classList.toggle('on', m === 'air');
+      document.getElementById('modeGrab').classList.toggle('on', m === 'grab');
+    }
+    document.getElementById('modeAir').addEventListener('click', () => setMode('air'));
+    document.getElementById('modeGrab').addEventListener('click', () => setMode('grab'));
     window.__airfx = { ctx, engine, camera, setProfile };
 
     // First-run guided tour (and a persistent "? Tour" replay button).

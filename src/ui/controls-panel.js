@@ -56,12 +56,23 @@ function knobMarkup(id, label) {
 }
 
 export function createControlsPanel(leftEl, rightEl = leftEl) {
-  // Per-effect on/off, toggled by clicking the card. Exposed via getEnabled() so the
-  // main loop can gate the mapping. All effects start enabled.
+  // Per-effect on/off, toggled by clicking the card (or auto-enabled by a grab).
   const enabled = Object.fromEntries(LAYOUT.map((fx) => [fx.key, true]));
+  const cards = {};
   const arcs = {};
   const ptrs = {};
   const vals = {};
+  const knobEls = {}; // knob id -> the .knob element (for grab-mode hit-testing)
+
+  function setEnabled(key, on) {
+    enabled[key] = !!on;
+    const card = cards[key];
+    if (card) {
+      card.classList.toggle('active', enabled[key]);
+      card.querySelector('.pwr').textContent = enabled[key] ? 'ON' : 'OFF';
+    }
+  }
+
   for (const fx of LAYOUT) {
     const card = document.createElement('div');
     card.className = 'fx active';
@@ -69,22 +80,20 @@ export function createControlsPanel(leftEl, rightEl = leftEl) {
     card.title = 'Click to enable / disable';
     const knobs = fx.knobs.map(([k, label]) => knobMarkup(`${fx.key}.${k}`, label)).join('');
     card.innerHTML = `<h3>${fx.title}<span class="pwr">ON</span></h3><div class="knobs">${knobs}</div>`;
-    card.addEventListener('click', () => {
-      enabled[fx.key] = !enabled[fx.key];
-      card.classList.toggle('active', enabled[fx.key]);
-      card.querySelector('.pwr').textContent = enabled[fx.key] ? 'ON' : 'OFF';
-    });
+    card.addEventListener('click', () => setEnabled(fx.key, !enabled[fx.key]));
     for (const [k] of fx.knobs) {
       const id = `${fx.key}.${k}`;
       const knobEl = card.querySelector(`.knob[data-k="${id}"]`);
+      knobEls[id] = knobEl;
       arcs[id] = knobEl.querySelector('.arc');
       ptrs[id] = knobEl.querySelector('.ptr');
       vals[id] = knobEl.querySelector('.val');
     }
+    cards[fx.key] = card;
     (fx.hand === 'right' ? rightEl : leftEl).appendChild(card);
   }
 
-  // Knobs reflect gesture-driven intensity each frame; on/off glow is driven by clicks.
+  // Knobs reflect the current snapshot each frame (height-driven in Air, grab-driven in Grab).
   function update(snapshot) {
     const d = snapshotToDisplay(snapshot);
     const angles = computeDialAngles(snapshot);
@@ -92,7 +101,6 @@ export function createControlsPanel(leftEl, rightEl = leftEl) {
       for (const [k] of fx.knobs) {
         const id = `${fx.key}.${k}`;
         const v = Math.max(0, Math.min(1, d[fx.key][k]));
-        // value arc: 0..75 of pathLength = 0..270deg
         arcs[id].style.strokeDasharray = `${(v * 75).toFixed(2)} 100`;
         ptrs[id].setAttribute('transform', `rotate(${angles[fx.key][k].toFixed(1)} 50 50)`);
         vals[id].textContent = formatValue(fx.key, k, snapshot);
@@ -100,5 +108,5 @@ export function createControlsPanel(leftEl, rightEl = leftEl) {
     }
   }
 
-  return { update, getEnabled: () => enabled };
+  return { update, getEnabled: () => enabled, setEnabled, getKnobElements: () => knobEls };
 }

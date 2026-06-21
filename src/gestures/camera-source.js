@@ -66,6 +66,7 @@ export class CameraGestureSource {
         size: handSize(lm),
         open: countOpenFingers(lm),
         confidence: handed[i]?.[0]?.score ?? 1,
+        lm, // raw 21 landmarks, used by Grab mode for the cursor + pinch
       },
     }));
     // Assign by SCREEN POSITION, not MediaPipe handedness: position stays stable when

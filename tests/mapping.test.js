@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mapSignalsToSnapshot } from '../src/mapping/mapping.js';
+import { mapSignalsToSnapshot, mapKnobsToSnapshot } from '../src/mapping/mapping.js';
 
 const sig = (lh, rh) => ({ left: { present: true, heightNorm: lh }, right: { present: true, heightNorm: rh } });
 const ALL = { filter: true, reverb: true, delay: true, tremolo: true, compressor: true };
@@ -50,6 +50,22 @@ test('compressor: more right-hand height squashes harder; off bypasses', () => {
   assert.equal(off.active, false);
   assert.equal(off.ratio, 1);
   assert.equal(off.threshold, 0);
+});
+
+test('grab mode: mapKnobsToSnapshot maps per-knob values to params, gated by enabled', () => {
+  const kv = {
+    'filter.cutoff': 1, 'reverb.wet': 1, 'delay.mix': 1, 'delay.feedback': 1,
+    'tremolo.rate': 1, 'tremolo.depth': 1, 'compressor.amount': 1,
+  };
+  const s = mapKnobsToSnapshot(kv, ALL);
+  assert.ok(Math.abs(s.filter.cutoff - 12000) < 1e-6);
+  assert.ok(s.reverb.wet > 0 && s.reverb.active === true);
+  assert.ok(s.tremolo.depth > 0 && s.tremolo.active === true);
+  assert.equal(s.compressor.active, true);
+  const off = mapKnobsToSnapshot(kv, { filter: false, reverb: false, delay: false, tremolo: false, compressor: false });
+  assert.equal(off.reverb.wet, 0);
+  assert.equal(off.reverb.active, false);
+  assert.ok(Math.abs(off.filter.cutoff - 12000) < 1e-6);
 });
 
 test('default enabled mask is all-on', () => {
