@@ -1,8 +1,10 @@
 import { PARAM } from '../config.js';
 import { generateImpulseResponse } from './reverb-ir.js';
 
-export function createAudioEngine(ctx, stream) {
-  const source = ctx.createMediaStreamSource(stream);
+// `sourceNode` is any AudioNode to process (e.g. a MediaElementAudioSourceNode
+// from an uploaded <audio> track, or a MediaStreamAudioSourceNode from a mic).
+export function createAudioEngine(ctx, sourceNode) {
+  const source = sourceNode;
 
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';

@@ -10,8 +10,16 @@ h1 { font-size: 1.1rem; margin: 0; }
 .overlay[hidden] { display: none; }
 #startBtn { font-size: 1.1rem; padding: .8rem 1.4rem; border: 0; border-radius: 10px; background: #4f7cff; color: #fff; cursor: pointer; }
 .error { color: #ff8a8a; }
-main { display: flex; gap: 1rem; padding: 1rem; flex-wrap: wrap; }
-.stage { position: relative; flex: 1 1 480px; min-width: 0; }
+main { display: flex; gap: 1rem; padding: 1rem; flex-wrap: wrap; align-items: flex-start; }
+.col { min-width: 0; display: flex; flex-direction: column; gap: .6rem; }
+.col-left, .col-right { flex: 1 1 200px; }
+.col-center { flex: 2 1 440px; }
+.col-title { font-size: .85rem; margin: 0; color: #9ec1ff; letter-spacing: .02em; }
+.rack { display: grid; grid-template-columns: 1fr; gap: .7rem; }
+.transport { display: flex; flex-direction: column; gap: .5rem; background: #1e2027; border-radius: 10px; padding: .6rem; }
+.transport audio { width: 100%; }
+.upload { display: inline-block; text-align: center; background: #4f7cff; color: #fff; border-radius: 8px; padding: .55rem .8rem; cursor: pointer; font-size: .9rem; }
+.stage { position: relative; width: 100%; min-width: 0; }
 video { width: 100%; height: auto; border-radius: 10px; transform: scaleX(-1); display: block; background: #000; min-height: 260px; }
 #overlay { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
 .status { position: absolute; inset: 0; display: grid; place-content: center; color: #cfe0ff; font-size: .95rem; text-align: center; padding: 1rem; pointer-events: none; }

@@ -14,10 +14,10 @@ export function computeDialAngles(snapshot) {
 }
 
 const LAYOUT = [
-  { key: 'filter', title: 'Filter', knobs: [['cutoff', 'Cutoff']] },
-  { key: 'reverb', title: 'Reverb', knobs: [['wet', 'Amount']] },
-  { key: 'delay', title: 'Delay', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
-  { key: 'tremolo', title: 'Tremolo', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
+  { key: 'filter', title: 'Filter', hand: 'left', knobs: [['cutoff', 'Cutoff']] },
+  { key: 'reverb', title: 'Reverb', hand: 'left', knobs: [['wet', 'Amount']] },
+  { key: 'delay', title: 'Delay', hand: 'left', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
+  { key: 'tremolo', title: 'Tremolo', hand: 'right', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
 ];
 
 const pct = (v) => `${Math.round(v * 100)}%`;
@@ -37,7 +37,9 @@ function formatValue(fxKey, knobKey, s) {
   return '';
 }
 
-export function createControlsPanel(rootEl) {
+// leftEl holds the left-hand effects (filter/reverb/delay), rightEl the right-hand
+// effect (tremolo). If rightEl is omitted, everything renders into leftEl.
+export function createControlsPanel(leftEl, rightEl = leftEl) {
   const dials = {};
   const vals = {};
   const groups = {};
@@ -54,7 +56,7 @@ export function createControlsPanel(rootEl) {
       dials[`${fx.key}.${knobKey}`] = k.querySelector('.dial');
       vals[`${fx.key}.${knobKey}`] = k.querySelector('.val');
     }
-    rootEl.appendChild(card);
+    (fx.hand === 'right' ? rightEl : leftEl).appendChild(card);
     groups[fx.key] = card;
   }
 

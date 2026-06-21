@@ -51,20 +51,23 @@ async function start() {
   startError.hidden = true;
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      throw new Error('Camera/mic need HTTPS or localhost. Serve over a secure origin.');
-    }
-    const audioStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
-    const track0 = audioStream.getAudioTracks()[0];
-    const ms = track0 ? track0.getSettings() : {};
-    if (ms.echoCancellation || ms.noiseSuppression || ms.autoGainControl) {
-      document.getElementById('warn').textContent =
-        '🎧 Use headphones. (Browser kept echo/noise processing on – headphones still fix it.)';
+      throw new Error('Camera needs HTTPS or localhost. Serve over a secure origin.');
     }
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     await ctx.resume();
-    const engine = createAudioEngine(ctx, audioStream);
+
+    // Audio source is an UPLOADED track (no microphone), routed through the FX graph.
+    const trackEl = document.getElementById('track');
+    const srcNode = ctx.createMediaElementSource(trackEl);
+    const engine = createAudioEngine(ctx, srcNode);
+
+    const trackFile = document.getElementById('trackFile');
+    trackFile.addEventListener('change', () => {
+      const file = trackFile.files && trackFile.files[0];
+      if (!file) return;
+      trackEl.src = URL.createObjectURL(file);
+      trackEl.play().catch(() => {});
+    });
 
     const recorder = createRecorder(engine.recorderStream);
     const recordBtn = document.getElementById('recordBtn');
@@ -92,7 +95,10 @@ async function start() {
     const video = document.getElementById('video');
     const camera = new CameraGestureSource(video);
 
-    const rack = createControlsPanel(document.getElementById('rack'));
+    const rack = createControlsPanel(
+      document.getElementById('rackLeft'),
+      document.getElementById('rackRight'),
+    );
     const meters = createMeters(document.getElementById('meters'));
     const overlay = createOverlay(document.getElementById('overlay'), video);
 

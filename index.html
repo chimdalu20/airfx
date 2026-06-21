@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AirFX – Hand-Gesture Voice Effects</title>
+  <title>AirFX – Hand-Gesture Audio Effects</title>
   <link rel="stylesheet" href="styles.css" />
   <script type="importmap">
   { "imports": { "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs" } }
@@ -12,32 +12,46 @@
 <body>
   <header>
     <h1>AirFX</h1>
-    <div id="warn" class="warn">🎧 Use headphones – speakers cause feedback howl.</div>
+    <div id="warn" class="warn">Upload a track, press play, and shape it with your hands.</div>
   </header>
 
   <div id="startScreen" class="overlay">
-    <button id="startBtn">Start (allow camera + mic)</button>
+    <button id="startBtn">Start (allow camera)</button>
     <p id="startError" class="error" hidden></p>
   </div>
 
   <main id="app" hidden>
-    <section class="stage">
-      <video id="video" playsinline muted></video>
-      <canvas id="overlay"></canvas>
-      <div id="status" class="status"></div>
-      <div class="stage-tag">You (mirrored)</div>
+    <section class="col col-left">
+      <h2 class="col-title">◀ Left hand</h2>
+      <div id="rackLeft" class="rack"></div>
     </section>
-    <aside class="side">
-      <div id="debug" class="debug">starting…</div>
-      <div id="meters"></div>
-      <div id="rack"></div>
+
+    <section class="col col-center">
+      <div class="stage">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="status" class="status"></div>
+        <div class="stage-tag">You (mirrored)</div>
+      </div>
+      <div class="transport">
+        <label class="upload" for="trackFile">📁 Upload a track</label>
+        <input type="file" id="trackFile" accept="audio/*" hidden />
+        <audio id="track" controls loop></audio>
+      </div>
       <div class="actions">
         <button id="calibrateBtn">Calibrate</button>
         <button id="recordBtn">⏺ Record</button>
         <button id="panicBtn" class="danger">Mute</button>
         <select id="preset" aria-label="Preset"><option>Lush</option><option>Subtle</option><option>Extreme</option></select>
       </div>
-    </aside>
+      <div id="debug" class="debug">starting…</div>
+      <div id="meters"></div>
+    </section>
+
+    <section class="col col-right">
+      <h2 class="col-title">Right hand ▶</h2>
+      <div id="rackRight" class="rack"></div>
+    </section>
   </main>
 
   <script type="module" src="src/main.js"></script>
