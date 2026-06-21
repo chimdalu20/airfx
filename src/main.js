@@ -11,6 +11,7 @@ import { createOverlay } from './ui/overlay.js';
 import { SMOOTH, PRESENCE, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
 import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
 import { createOnboarding } from './ui/onboarding.js';
+import { createVoice } from './ui/voice.js';
 
 let profile = DEFAULT_PROFILE;
 export const getProfile = () => profile;
@@ -51,6 +52,7 @@ async function start() {
     }
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     await ctx.resume();
+    const voice = createVoice();
 
     // Audio source is an UPLOADED track (no microphone), routed through the FX graph.
     const trackEl = document.getElementById('track');
@@ -144,7 +146,7 @@ async function start() {
 
     document.getElementById('panicBtn').addEventListener('click', () => engine.panic());
     document.getElementById('calibrateBtn').addEventListener('click', async () => {
-      profile = await runCalibration({ getLatestRaw: () => latestRaw });
+      profile = await runCalibration({ getLatestRaw: () => latestRaw, voice });
     });
     const presetSel = document.getElementById('preset');
     applyPreset(presetSel.value);
@@ -153,7 +155,8 @@ async function start() {
 
     // First-run guided tour (and a persistent "? Tour" replay button).
     const onboarding = createOnboarding({
-      onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw }); },
+      voice,
+      onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw, voice }); },
     });
     const helpBtn = document.getElementById('helpBtn');
     if (helpBtn) helpBtn.addEventListener('click', () => onboarding.start());

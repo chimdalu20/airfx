@@ -17,7 +17,7 @@ const STEPS = [
 ];
 
 // getLatestRaw() returns the most recent RawFrame ({ left, right } each with .height).
-export function runCalibration({ getLatestRaw }) {
+export function runCalibration({ getLatestRaw, voice }) {
   return new Promise((resolve) => {
     const profile = structuredClone(loadProfile() || DEFAULT_PROFILE);
     const root = document.createElement('div');
@@ -49,6 +49,7 @@ export function runCalibration({ getLatestRaw }) {
       els.step.textContent = `Calibrate · ${i + 1} / ${STEPS.length}`;
       els.text.textContent = s.text;
       els.guide.dataset.dir = s.dir;
+      voice?.speak(s.text);
     }
     function tick() {
       const obs = getLatestRaw?.()?.[STEPS[i].side];
@@ -57,6 +58,7 @@ export function runCalibration({ getLatestRaw }) {
       raf = requestAnimationFrame(tick);
     }
     function close(save) {
+      voice?.cancel();
       cancelAnimationFrame(raf);
       root.remove();
       if (save) saveProfile(profile);

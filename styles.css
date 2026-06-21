@@ -120,6 +120,8 @@ select#preset { background: #1b2029; color: var(--text); border: 1px solid var(-
 .ob-next { margin-left: auto; background: #37e0cf; color: #06121a; font-weight: 700; border: 0; border-radius: 9px; padding: .5rem 1.1rem; cursor: pointer; }
 .ob-back:disabled { opacity: .4; cursor: default; }
 .ob-exit { margin-top: .6rem; width: 100%; font-size: .78rem; }
+.ob-voice { position: absolute; top: .55rem; right: .6rem; background: transparent; border: 0; font-size: 1.05rem; line-height: 1; cursor: pointer; opacity: .85; }
+.ob-voice:hover { opacity: 1; }
 
 /* Calibration pop-up */
 .cal-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-content: center; background: rgba(8,10,14,.85); }
