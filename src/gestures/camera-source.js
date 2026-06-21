@@ -59,7 +59,11 @@ export class CameraGestureSource {
     const handed = res.handedness || [];
     for (let i = 0; i < hands.length; i++) {
       const lm = hands[i];
-      const label = handed[i]?.[0]?.categoryName || 'Right';
+      // MediaPipe labels handedness assuming a mirrored selfie image, but we feed the
+      // raw (un-mirrored) webcam frame, so its Left/Right is inverted relative to the
+      // user. Swap it so the label matches the actual hand and the mirrored on-screen view.
+      const mp = handed[i]?.[0]?.categoryName || 'Right';
+      const label = mp === 'Left' ? 'Right' : 'Left';
       const conf = handed[i]?.[0]?.score ?? 1;
       const obs = { fingers: countExtendedFingers(lm, label), height: handHeight(lm), size: handSize(lm), confidence: conf };
       if (label === 'Left') frame.left = obs; else frame.right = obs;
