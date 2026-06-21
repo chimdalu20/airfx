@@ -10,15 +10,13 @@ export function saveProfile(p) { localStorage.setItem(KEY, JSON.stringify(p)); }
 // getLatestRaw() must return the most recent RawFrame.
 export async function runCalibration({ getLatestRaw }) {
   const profile = structuredClone(DEFAULT_PROFILE);
+  // Intensity is now hand HEIGHT, so we only calibrate each hand's high/low reach
+  // (keep your hand at a comfortable arm's length — no need to approach the camera).
   const steps = [
-    ['Hold your LEFT hand FAIRLY CLOSE (~30cm, whole hand visible — do NOT touch the screen), then click OK', 'left', 'size', 'sizeNear'],
-    ['Hold your LEFT hand FAR (arm extended), then click OK', 'left', 'size', 'sizeFar'],
-    ['Raise your LEFT hand HIGH (still in frame), then click OK', 'left', 'height', 'heightHigh'],
-    ['Lower your LEFT hand LOW (still in frame), then click OK', 'left', 'height', 'heightLow'],
-    ['Hold your RIGHT hand FAIRLY CLOSE (~30cm, whole hand visible — do NOT touch the screen), then click OK', 'right', 'size', 'sizeNear'],
-    ['Hold your RIGHT hand FAR (arm extended), then click OK', 'right', 'size', 'sizeFar'],
-    ['Raise your RIGHT hand HIGH (still in frame), then click OK', 'right', 'height', 'heightHigh'],
-    ['Lower your RIGHT hand LOW (still in frame), then click OK', 'right', 'height', 'heightLow'],
+    ['Raise your LEFT hand HIGH with an OPEN palm (whole hand in frame), then click OK', 'left', 'height', 'heightHigh'],
+    ['Lower your LEFT hand LOW with an OPEN palm (whole hand in frame), then click OK', 'left', 'height', 'heightLow'],
+    ['Raise your RIGHT hand HIGH with an OPEN palm (whole hand in frame), then click OK', 'right', 'height', 'heightHigh'],
+    ['Lower your RIGHT hand LOW with an OPEN palm (whole hand in frame), then click OK', 'right', 'height', 'heightLow'],
   ];
   for (const [prompt, side, field, target] of steps) {
     // eslint-disable-next-line no-alert

@@ -14,5 +14,13 @@ export function countExtendedFingers(lm, handedness) {
   return count;
 }
 
+// Count of extended NON-thumb fingers (0..4). Handedness-free, so it is robust for
+// the open-palm (>=3) vs fist (<=1) engage gesture regardless of which hand it is.
+export function countOpenFingers(lm) {
+  let n = 0;
+  for (const [tip, pip] of FINGERS) if (fingerExtended(lm, tip, pip)) n++;
+  return n;
+}
+
 export const handHeight = (lm) => 1 - lm[9].y;
 export const handSize = (lm) => Math.hypot(lm[0].x - lm[9].x, lm[0].y - lm[9].y);

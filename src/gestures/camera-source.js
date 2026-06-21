@@ -1,5 +1,5 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
-import { countExtendedFingers, handHeight, handSize } from './landmarks.js';
+import { countOpenFingers, handHeight, handSize } from './landmarks.js';
 
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task';
@@ -57,16 +57,25 @@ export class CameraGestureSource {
     const frame = { tMs, left: null, right: null, _landmarks: res.landmarks || [] };
     const hands = res.landmarks || [];
     const handed = res.handedness || [];
-    for (let i = 0; i < hands.length; i++) {
-      const lm = hands[i];
-      // MediaPipe labels handedness assuming a mirrored selfie image, but we feed the
-      // raw (un-mirrored) webcam frame, so its Left/Right is inverted relative to the
-      // user. Swap it so the label matches the actual hand and the mirrored on-screen view.
-      const mp = handed[i]?.[0]?.categoryName || 'Right';
-      const label = mp === 'Left' ? 'Right' : 'Left';
-      const conf = handed[i]?.[0]?.score ?? 1;
-      const obs = { fingers: countExtendedFingers(lm, label), height: handHeight(lm), size: handSize(lm), confidence: conf };
-      if (label === 'Left') frame.left = obs; else frame.right = obs;
+    const items = hands.map((lm, i) => ({
+      // Mirrored screen-x: raw-left appears on the RIGHT of the flipped display, so
+      // screenX 0 = screen-left. Wrist (landmark 0) is a stable reference point.
+      screenX: 1 - lm[0].x,
+      obs: {
+        height: handHeight(lm),
+        size: handSize(lm),
+        open: countOpenFingers(lm),
+        confidence: handed[i]?.[0]?.score ?? 1,
+      },
+    }));
+    // Assign by SCREEN POSITION, not MediaPipe handedness: position stays stable when
+    // hands are close (handedness swaps there) and matches the left/right effect columns.
+    if (items.length === 1) {
+      if (items[0].screenX < 0.5) frame.left = items[0].obs; else frame.right = items[0].obs;
+    } else if (items.length >= 2) {
+      items.sort((a, b) => a.screenX - b.screenX);
+      frame.left = items[0].obs;
+      frame.right = items[items.length - 1].obs;
     }
     return frame;
   }

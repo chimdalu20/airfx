@@ -1,11 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { countExtendedFingers, handHeight, handSize, fingerExtended } from '../src/gestures/landmarks.js';
+import { countExtendedFingers, countOpenFingers, handHeight, handSize, fingerExtended } from '../src/gestures/landmarks.js';
 
 // Helper: 21 neutral points, all folded (tip.y == pip.y), thumb folded.
 function blankHand() {
   return Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
 }
+
+test('countOpenFingers: 0 for a fist, 4 for an open palm (non-thumb)', () => {
+  const fist = blankHand(); // all tips == pips -> none extended
+  assert.equal(countOpenFingers(fist), 0);
+  const palm = blankHand();
+  for (const [tip, pip] of [[8, 6], [12, 10], [16, 14], [20, 18]]) {
+    palm[tip] = { x: 0.5, y: 0.2, z: 0 };
+    palm[pip] = { x: 0.5, y: 0.4, z: 0 };
+  }
+  assert.equal(countOpenFingers(palm), 4);
+});
 
 test('counts one extended finger (index only)', () => {
   const lm = blankHand();

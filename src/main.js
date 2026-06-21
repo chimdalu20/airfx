@@ -3,12 +3,12 @@ import { createRecorder } from './audio/recorder.js';
 import { CameraGestureSource } from './gestures/camera-source.js';
 import { applyCalibration, DEFAULT_PROFILE } from './calibration/profile.js';
 import { OneEuroFilter } from './smoothing/one-euro.js';
-import { Debounced, Hysteresis } from './smoothing/debounce.js';
+import { Hysteresis } from './smoothing/debounce.js';
 import { mapSignalsToSnapshot } from './mapping/mapping.js';
 import { createControlsPanel } from './ui/controls-panel.js';
 import { createMeters } from './ui/meters.js';
 import { createOverlay } from './ui/overlay.js';
-import { SMOOTH, DEBOUNCE, PRESENCE, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
+import { SMOOTH, PRESENCE, OPEN, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
 import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
 
 let profile = DEFAULT_PROFILE;
@@ -25,22 +25,17 @@ function applyPreset(name) {
 
 function makeHandPipeline(side) {
   const heightF = new OneEuroFilter(SMOOTH);
-  const distF = new OneEuroFilter(SMOOTH);
-  const fingers = new Debounced(DEBOUNCE.fingerFrames, 0);
   const presence = new Hysteresis(PRESENCE.enter, PRESENCE.exit, false);
-  let lastNorm = { heightNorm: 0, distanceNorm: 0 };
+  const openH = new Hysteresis(OPEN.enter, OPEN.exit, false); // open palm (>=3) engages, fist (<=1) disengages
+  let lastHeight = 0;
   return (obs, tMs) => {
     const present = presence.update(obs ? obs.confidence : 0);
+    const engaged = present && openH.update(obs ? obs.open : 0);
     if (obs) {
       const raw = applyCalibration({ height: obs.height, size: obs.size }, profile[side]);
-      lastNorm = {
-        heightNorm: heightF.filter(raw.heightNorm, tMs),
-        distanceNorm: distF.filter(raw.distanceNorm, tMs),
-      };
+      lastHeight = heightF.filter(raw.heightNorm, tMs);
     }
-    const out = { present, heightNorm: lastNorm.heightNorm, distanceNorm: lastNorm.distanceNorm };
-    if (side === 'left') out.fingers = present ? fingers.push(obs ? obs.fingers : 0) : 0;
-    return out;
+    return { present, engaged, heightNorm: lastHeight };
   };
 }
 

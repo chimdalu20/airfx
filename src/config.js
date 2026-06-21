@@ -5,6 +5,8 @@ export const TREMOLO = { rateMin: 0.1, rateMax: 12, depthMax: 1.0 };
 export const SMOOTH = { minCutoff: 1.2, beta: 0.6, dCutoff: 1.0 };
 export const DEBOUNCE = { fingerFrames: 4 };
 export const PRESENCE = { enter: 0.6, exit: 0.4 };
+// Open-palm engage: engage when >= 3 fingers extended, disengage when <= 1 (hysteresis).
+export const OPEN = { enter: 3, exit: 1 };
 export const PARAM = { timeConstant: 0.03 };
 export const KNOB = { sweepDeg: 270 };
 
