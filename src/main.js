@@ -10,6 +10,7 @@ import { createMeters } from './ui/meters.js';
 import { createOverlay } from './ui/overlay.js';
 import { SMOOTH, PRESENCE, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
 import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
+import { createOnboarding } from './ui/onboarding.js';
 
 let profile = DEFAULT_PROFILE;
 export const getProfile = () => profile;
@@ -149,6 +150,14 @@ async function start() {
     applyPreset(presetSel.value);
     presetSel.addEventListener('change', () => applyPreset(presetSel.value));
     window.__airfx = { ctx, engine, camera, setProfile };
+
+    // First-run guided tour (and a persistent "? Tour" replay button).
+    const onboarding = createOnboarding({
+      onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw }); },
+    });
+    const helpBtn = document.getElementById('helpBtn');
+    if (helpBtn) helpBtn.addEventListener('click', () => onboarding.start());
+    if (onboarding.isFirstRun()) onboarding.start();
   } catch (e) {
     // Revert to the start screen so the error is visible and retryable.
     document.getElementById('app').hidden = true;

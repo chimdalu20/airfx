@@ -93,3 +93,48 @@ select#preset { background: #1b2029; color: var(--text); border: 1px solid var(-
 .fx h3 .pwr { margin-left: auto; font-size: .58rem; font-weight: 800; letter-spacing: .1em; padding: .1rem .4rem; border-radius: 999px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .fx:not(.active) h3 .pwr { color: var(--muted); border-color: var(--line); background: transparent; }
 .fx:not(.active) .dial .arc, .fx:not(.active) .dial .ptr { filter: none; opacity: .4; }
+
+/* Shared ghost button */
+.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 9px; padding: .45rem .8rem; cursor: pointer; font-weight: 600; }
+.ghost:hover { color: var(--text); }
+.help { background: #1b2029; color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .75rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.help:hover { background: #232a36; }
+
+/* Onboarding tour */
+.ob-root { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+.ob-spot { position: fixed; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(8,10,14,.74); outline: 2px solid #37e0cf; transition: left .25s, top .25s, width .25s, height .25s; }
+.ob-hand { position: fixed; width: 64px; display: grid; justify-items: center; align-content: space-between; font-size: 2.4rem; pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); animation: obHand 1.8s ease-in-out infinite; }
+.ob-hand .ob-arrow { font-size: 1rem; color: #37e0cf; animation: obArrow 1.4s ease-in-out infinite; }
+@keyframes obHand { 0%,100% { transform: translateY(26%); } 50% { transform: translateY(-26%); } }
+@keyframes obArrow { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+.ob-card { position: fixed; max-width: min(360px, 92vw); background: linear-gradient(180deg, #1b212c, #141822); border: 1px solid color-mix(in srgb, #37e0cf 40%, transparent); border-radius: 14px; padding: 1rem 1.1rem; box-shadow: 0 18px 50px rgba(0,0,0,.6); pointer-events: auto; }
+.ob-title { margin: .1rem 0 .4rem; font-size: 1.05rem; }
+.ob-body { margin: 0 0 .85rem; color: #c4cddd; line-height: 1.5; font-size: .92rem; }
+.ob-dots { display: flex; gap: .3rem; margin-bottom: .7rem; }
+.ob-dot { width: 16px; height: 5px; border-radius: 999px; background: #2b3340; border: 0; padding: 0; cursor: pointer; }
+.ob-dot.on { background: #37e0cf; }
+.ob-cta:empty { display: none; }
+.ob-cta { margin-bottom: .6rem; }
+.ob-ctabtn { width: 100%; background: linear-gradient(180deg, #5ff0df, #2bb6a8); color: #06121a; font-weight: 800; border: 0; border-radius: 10px; padding: .6rem; cursor: pointer; }
+.ob-nav { display: flex; gap: .5rem; align-items: center; }
+.ob-next { margin-left: auto; background: #37e0cf; color: #06121a; font-weight: 700; border: 0; border-radius: 9px; padding: .5rem 1.1rem; cursor: pointer; }
+.ob-back:disabled { opacity: .4; cursor: default; }
+.ob-exit { margin-top: .6rem; width: 100%; font-size: .78rem; }
+
+/* Calibration pop-up */
+.cal-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-content: center; background: rgba(8,10,14,.85); }
+.cal-card { width: min(360px, 92vw); text-align: center; background: linear-gradient(180deg, #1b212c, #141822); border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem; box-shadow: 0 18px 50px rgba(0,0,0,.6); }
+.cal-step { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.cal-guide { height: 92px; display: grid; justify-items: center; align-content: center; gap: .15rem; margin: .4rem 0; }
+.cal-hand { font-size: 2.6rem; animation: calUp 1.6s ease-in-out infinite; }
+.cal-guide[data-dir="down"] .cal-hand { animation: calDown 1.6s ease-in-out infinite; }
+.cal-arrow { color: #37e0cf; }
+.cal-guide[data-dir="down"] .cal-arrow { transform: rotate(180deg); }
+@keyframes calUp { 0%,100% { transform: translateY(16px); } 50% { transform: translateY(-16px); } }
+@keyframes calDown { 0%,100% { transform: translateY(-16px); } 50% { transform: translateY(16px); } }
+.cal-text { font-size: 1.05rem; margin: .3rem 0 .55rem; }
+.cal-live { font: .85rem ui-monospace, monospace; color: var(--muted); margin-bottom: 1rem; }
+.cal-live b { color: #37e0cf; }
+.cal-actions { display: flex; gap: .5rem; justify-content: center; }
+.cal-capture { background: linear-gradient(180deg, #5ff0df, #2bb6a8); color: #06121a; font-weight: 800; border: 0; border-radius: 10px; padding: .6rem 1.3rem; cursor: pointer; }
+.cal-capture:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.5); }
