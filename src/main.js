@@ -112,19 +112,32 @@ async function start() {
     let latestRaw = null;
     if (status) status.textContent = '';
 
+    const debugEl = document.getElementById('debug');
     camera.start((frame) => {
       latestRaw = frame;
       // FPS sampling
       window.__airfx_fps = window.__airfx_fps || { last: frame.tMs, n: 0, fps: 0 };
       const F = window.__airfx_fps;
       F.n++;
-      if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; if (F.fps < 15) console.warn('Low FPS:', F.fps); }
-      const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
-      const snapshot = mapSignalsToSnapshot(signals);
-      engine.apply(snapshot);
-      rack.update(snapshot);
-      meters.update(signals);
-      overlay.draw(frame._landmarks || []);
+      if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; }
+      const hands = (frame._landmarks || []).length;
+      if (debugEl) {
+        debugEl.classList.toggle('err', !!frame._error);
+        debugEl.textContent = frame._error
+          ? `⚠ ${frame._error}`
+          : `tracking · ${F.fps || '…'} fps · hands detected: ${hands}`;
+      }
+      try {
+        const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
+        const snapshot = mapSignalsToSnapshot(signals);
+        engine.apply(snapshot);
+        rack.update(snapshot);
+        meters.update(signals);
+        overlay.draw(frame._landmarks || []);
+      } catch (err) {
+        if (debugEl) { debugEl.classList.add('err'); debugEl.textContent = `⚠ render: ${err.message}`; }
+        console.error(err);
+      }
     });
 
     document.getElementById('panicBtn').addEventListener('click', () => engine.panic());

@@ -25,16 +25,25 @@ export class CameraGestureSource {
 
   start(onFrame) {
     this.running = true;
+    const reschedule = (fn) => {
+      if ('requestVideoFrameCallback' in this.video) this.video.requestVideoFrameCallback(fn);
+      else requestAnimationFrame(fn);
+    };
     const loop = () => {
       if (!this.running) return;
       const tMs = performance.now();
-      const res = this.landmarker.detectForVideo(this.video, tMs);
-      onFrame(this._toRawFrame(res, tMs));
-      if ('requestVideoFrameCallback' in this.video) this.video.requestVideoFrameCallback(loop);
-      else requestAnimationFrame(loop);
+      let frame;
+      try {
+        const res = this.landmarker.detectForVideo(this.video, tMs);
+        frame = this._toRawFrame(res, tMs);
+      } catch (err) {
+        // A thrown frame must NOT kill the loop (it used to). Surface it instead.
+        frame = { tMs, left: null, right: null, _landmarks: [], _error: 'detect: ' + (err?.message || err) };
+      }
+      try { onFrame(frame); } catch (err) { console.error('onFrame error', err); }
+      reschedule(loop);
     };
-    if ('requestVideoFrameCallback' in this.video) this.video.requestVideoFrameCallback(loop);
-    else requestAnimationFrame(loop);
+    reschedule(loop);
   }
 
   stop() {

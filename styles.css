@@ -42,3 +42,5 @@ video { width: 100%; height: auto; border-radius: 10px; transform: scaleX(-1); d
 button { background: #2b2e38; color: #e8e8ea; border: 0; border-radius: 8px; padding: .5rem .8rem; cursor: pointer; }
 button.danger { background: #6a2330; }
 #meters { font-size: .8rem; line-height: 1.5; background: #1e2027; border-radius: 10px; padding: .6rem; }
+.debug { font-size: .8rem; font-variant-numeric: tabular-nums; background: #11240f; color: #aef0a0; border-radius: 8px; padding: .4rem .6rem; }
+.debug.err { background: #2a0f12; color: #ff9a9a; }
