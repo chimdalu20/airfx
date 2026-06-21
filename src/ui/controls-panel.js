@@ -14,10 +14,10 @@ export function computeDialAngles(snapshot) {
 }
 
 const LAYOUT = [
-  { key: 'filter', title: 'Filter', hand: 'left', knobs: [['cutoff', 'Cutoff']] },
-  { key: 'reverb', title: 'Reverb', hand: 'left', knobs: [['wet', 'Amount']] },
-  { key: 'delay', title: 'Delay', hand: 'left', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
-  { key: 'tremolo', title: 'Tremolo', hand: 'right', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
+  { key: 'filter', title: 'Filter', hand: 'left', accent: '#37e0cf', knobs: [['cutoff', 'Cutoff']] },
+  { key: 'reverb', title: 'Reverb', hand: 'left', accent: '#9b7bff', knobs: [['wet', 'Amount']] },
+  { key: 'delay', title: 'Delay', hand: 'left', accent: '#4f9bff', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
+  { key: 'tremolo', title: 'Tremolo', hand: 'right', accent: '#ffb14e', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
 ];
 
 const pct = (v) => `${Math.round(v * 100)}%`;
@@ -37,38 +37,55 @@ function formatValue(fxKey, knobKey, s) {
   return '';
 }
 
-// leftEl holds the left-hand effects (filter/reverb/delay), rightEl the right-hand
-// effect (tremolo). If rightEl is omitted, everything renders into leftEl.
+// One arc-ring knob: a dim 270deg track, a bright value arc, a hub, and a pointer.
+function knobMarkup(id, label) {
+  return `
+    <div class="knob" data-k="${id}">
+      <svg class="dial" viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="track" cx="50" cy="50" r="40" pathLength="100" transform="rotate(135 50 50)"></circle>
+        <circle class="arc" cx="50" cy="50" r="40" pathLength="100" transform="rotate(135 50 50)"></circle>
+        <circle class="hub" cx="50" cy="50" r="27"></circle>
+        <line class="ptr" x1="50" y1="50" x2="50" y2="16"></line>
+      </svg>
+      <span class="lbl">${label}</span>
+      <span class="val">–</span>
+    </div>`;
+}
+
 export function createControlsPanel(leftEl, rightEl = leftEl) {
-  const dials = {};
+  const arcs = {};
+  const ptrs = {};
   const vals = {};
   const groups = {};
   for (const fx of LAYOUT) {
     const card = document.createElement('div');
     card.className = 'fx';
-    card.innerHTML = `<h3>${fx.title}</h3><div class="knobs"></div>`;
-    const knobsEl = card.querySelector('.knobs');
-    for (const [knobKey, label] of fx.knobs) {
-      const k = document.createElement('div');
-      k.className = 'knob';
-      k.innerHTML = `<div class="dial"></div><span class="lbl">${label}</span><span class="val">–</span>`;
-      knobsEl.appendChild(k);
-      dials[`${fx.key}.${knobKey}`] = k.querySelector('.dial');
-      vals[`${fx.key}.${knobKey}`] = k.querySelector('.val');
+    card.style.setProperty('--accent', fx.accent);
+    const knobs = fx.knobs.map(([k, label]) => knobMarkup(`${fx.key}.${k}`, label)).join('');
+    card.innerHTML = `<h3>${fx.title}</h3><div class="knobs">${knobs}</div>`;
+    for (const [k] of fx.knobs) {
+      const id = `${fx.key}.${k}`;
+      const knobEl = card.querySelector(`.knob[data-k="${id}"]`);
+      arcs[id] = knobEl.querySelector('.arc');
+      ptrs[id] = knobEl.querySelector('.ptr');
+      vals[id] = knobEl.querySelector('.val');
     }
     (fx.hand === 'right' ? rightEl : leftEl).appendChild(card);
     groups[fx.key] = card;
   }
 
   function update(snapshot) {
+    const d = snapshotToDisplay(snapshot);
     const angles = computeDialAngles(snapshot);
     for (const fx of LAYOUT) {
       groups[fx.key].classList.toggle('active', !!angles[fx.key].active);
-      for (const [knobKey] of fx.knobs) {
-        const dial = dials[`${fx.key}.${knobKey}`];
-        dial.style.setProperty('--angle', `${angles[fx.key][knobKey]}deg`);
-        dial.dataset.angle = angles[fx.key][knobKey].toFixed(1);
-        vals[`${fx.key}.${knobKey}`].textContent = formatValue(fx.key, knobKey, snapshot);
+      for (const [k] of fx.knobs) {
+        const id = `${fx.key}.${k}`;
+        const v = Math.max(0, Math.min(1, d[fx.key][k]));
+        // value arc: 0..75 of pathLength = 0..270deg
+        arcs[id].style.strokeDasharray = `${(v * 75).toFixed(2)} 100`;
+        ptrs[id].setAttribute('transform', `rotate(${angles[fx.key][k].toFixed(1)} 50 50)`);
+        vals[id].textContent = formatValue(fx.key, k, snapshot);
       }
     }
   }

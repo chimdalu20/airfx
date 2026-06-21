@@ -5,7 +5,8 @@ test('rack renders and a dial rotates from a snapshot', async ({ page }) => {
   await expect(page.locator('#startBtn')).toBeVisible();
 
   // Inject the rack directly (no camera/mic in CI) and drive it with a snapshot.
-  const angle = await page.evaluate(async () => {
+  // A max filter cutoff (12000 Hz -> display 1.0) should fill the value arc to 75/100 (270deg).
+  const dash = await page.evaluate(async () => {
     const { createControlsPanel } = await import('/src/ui/controls-panel.js');
     const root = document.createElement('div');
     document.body.appendChild(root);
@@ -16,9 +17,9 @@ test('rack renders and a dial rotates from a snapshot', async ({ page }) => {
       delay: { mix: 0.5, time: 0.28, feedback: 0.55, active: true },
       tremolo: { rate: 12, depth: 1, active: true },
     });
-    return root.querySelector('.dial').dataset.angle;
+    return root.querySelector('.knob[data-k="filter.cutoff"] .arc').style.strokeDasharray;
   });
-  expect(Number(angle)).toBeCloseTo(135, 0);
+  expect(dash).toContain('75');
 });
 
 // Regression: the `.overlay { display: grid }` rule used to tie with and defeat the
