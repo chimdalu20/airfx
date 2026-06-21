@@ -4,6 +4,10 @@ header { display: flex; gap: 1rem; align-items: center; padding: .6rem 1rem; fle
 h1 { font-size: 1.1rem; margin: 0; }
 .warn { background: #5a4500; color: #ffe08a; padding: .3rem .6rem; border-radius: 6px; font-size: .85rem; }
 .overlay { position: fixed; inset: 0; display: grid; place-content: center; background: #14151a; z-index: 10; }
+/* The .overlay display rule above otherwise ties with and defeats the [hidden]
+   attribute (equal specificity, author wins), so the start screen never hides.
+   This makes hidden win for the overlay. */
+.overlay[hidden] { display: none; }
 #startBtn { font-size: 1.1rem; padding: .8rem 1.4rem; border: 0; border-radius: 10px; background: #4f7cff; color: #fff; cursor: pointer; }
 .error { color: #ff8a8a; }
 main { display: flex; gap: 1rem; padding: 1rem; flex-wrap: wrap; }

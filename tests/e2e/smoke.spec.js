@@ -20,3 +20,12 @@ test('rack renders and a dial rotates from a snapshot', async ({ page }) => {
   });
   expect(Number(angle)).toBeCloseTo(135, 0);
 });
+
+// Regression: the `.overlay { display: grid }` rule used to tie with and defeat the
+// [hidden] attribute, so the start screen never hid and covered the whole app.
+test('start screen actually hides when its hidden attribute is set', async ({ page }) => {
+  await page.goto('http://localhost:8000');
+  await expect(page.locator('#startScreen')).toBeVisible();
+  await page.evaluate(() => { document.getElementById('startScreen').hidden = true; });
+  await expect(page.locator('#startScreen')).toBeHidden();
+});
