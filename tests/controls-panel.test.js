@@ -5,7 +5,7 @@ import { computeDialAngles } from '../src/ui/controls-panel.js';
 test('computeDialAngles maps a full snapshot to centered angles', () => {
   const angles = computeDialAngles({
     filter: { cutoff: 12000, q: 1 },
-    reverb: { wet: 0.9, active: true },
+    reverb: { wet: 1.3, active: true },
     delay: { mix: 0.5, time: 0.28, feedback: 0.55, active: true },
     tremolo: { rate: 12, depth: 1, active: true },
   });

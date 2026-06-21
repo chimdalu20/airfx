@@ -2,56 +2,46 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mapSignalsToSnapshot } from '../src/mapping/mapping.js';
 
-const base = {
-  left: { present: true, engaged: true, heightNorm: 0.5 },
-  right: { present: false, engaged: false, heightNorm: 0.5 },
-};
+const sig = (lh, rh) => ({ left: { present: true, heightNorm: lh }, right: { present: true, heightNorm: rh } });
+const ALL = { filter: true, reverb: true, delay: true, tremolo: true };
 
-test('engaged left height drives filter cutoff (log) across the range', () => {
-  const lo = mapSignalsToSnapshot({ ...base, left: { ...base.left, heightNorm: 0 } });
-  const hi = mapSignalsToSnapshot({ ...base, left: { ...base.left, heightNorm: 1 } });
-  assert.ok(Math.abs(lo.filter.cutoff - 80) < 1e-6);
-  assert.ok(Math.abs(hi.filter.cutoff - 12000) < 1e-6);
+test('filter cutoff (log) reaches max at 75% height (fullAt), min at 0', () => {
+  assert.ok(Math.abs(mapSignalsToSnapshot(sig(0, 0), ALL).filter.cutoff - 80) < 1e-6);
+  assert.ok(Math.abs(mapSignalsToSnapshot(sig(0.75, 0), ALL).filter.cutoff - 12000) < 1e-6);
+  assert.ok(Math.abs(mapSignalsToSnapshot(sig(1, 0), ALL).filter.cutoff - 12000) < 1e-6);
 });
 
-test('open left palm engages reverb + delay', () => {
-  const s = mapSignalsToSnapshot(base);
+test('enabled mask turns effects on/off (click toggle)', () => {
+  const on = mapSignalsToSnapshot(sig(0.5, 0.5), ALL);
+  assert.equal(on.reverb.active, true);
+  assert.equal(on.delay.active, true);
+  assert.equal(on.tremolo.active, true);
+  const off = mapSignalsToSnapshot(sig(0.5, 0.5), { filter: false, reverb: false, delay: false, tremolo: false });
+  assert.equal(off.reverb.active, false);
+  assert.equal(off.reverb.wet, 0);
+  assert.equal(off.delay.active, false);
+  assert.equal(off.tremolo.active, false);
+  assert.equal(off.tremolo.depth, 0);
+  assert.ok(Math.abs(off.filter.cutoff - 12000) < 1e-6); // filter off = wide open (dry)
+});
+
+test('height scales intensity and saturates at fullAt (75%)', () => {
+  const lowWet = mapSignalsToSnapshot(sig(0.4, 0), ALL).reverb.wet;
+  const fullWet = mapSignalsToSnapshot(sig(0.75, 0), ALL).reverb.wet;
+  const topWet = mapSignalsToSnapshot(sig(1.0, 0), ALL).reverb.wet;
+  assert.ok(lowWet < fullWet);
+  assert.ok(Math.abs(fullWet - topWet) < 1e-9); // saturates at fullAt
+});
+
+test('tremolo depth scales with right-hand height, 0 when disabled', () => {
+  const lo = mapSignalsToSnapshot(sig(0, 0.3), ALL).tremolo.depth;
+  const hi = mapSignalsToSnapshot(sig(0, 0.75), ALL).tremolo.depth;
+  assert.ok(hi > lo);
+  assert.equal(mapSignalsToSnapshot(sig(0, 1), { ...ALL, tremolo: false }).tremolo.depth, 0);
+});
+
+test('default enabled mask is all-on', () => {
+  const s = mapSignalsToSnapshot(sig(0.5, 0.5));
   assert.equal(s.reverb.active, true);
-  assert.equal(s.delay.active, true);
-});
-
-test('closed left (not engaged) bypasses reverb/delay and opens the filter', () => {
-  const s = mapSignalsToSnapshot({ ...base, left: { present: true, engaged: false, heightNorm: 0.5 } });
-  assert.equal(s.reverb.active, false);
-  assert.equal(s.delay.active, false);
-  assert.equal(s.reverb.wet, 0);
-  assert.ok(Math.abs(s.filter.cutoff - 12000) < 1e-6);
-});
-
-test('absent left hand bypasses reverb/delay and opens the filter', () => {
-  const s = mapSignalsToSnapshot({ ...base, left: { present: false, engaged: true, heightNorm: 1 } });
-  assert.equal(s.reverb.active, false);
-  assert.equal(s.delay.active, false);
-  assert.ok(Math.abs(s.filter.cutoff - 12000) < 1e-6);
-});
-
-test('engaged left height scales reverb wet (intensity)', () => {
-  const low = mapSignalsToSnapshot({ ...base, left: { ...base.left, heightNorm: 0.2 } });
-  const high = mapSignalsToSnapshot({ ...base, left: { ...base.left, heightNorm: 0.9 } });
-  assert.ok(high.reverb.wet > low.reverb.wet);
-});
-
-test('open right palm engages tremolo; height scales rate + depth', () => {
-  const s = mapSignalsToSnapshot({ ...base, right: { present: true, engaged: true, heightNorm: 1 } });
   assert.equal(s.tremolo.active, true);
-  assert.ok(Math.abs(s.tremolo.rate - 12) < 1e-6);
-  assert.ok(Math.abs(s.tremolo.depth - 1) < 1e-6);
-});
-
-test('closed/absent right hand = tremolo inactive, depth 0', () => {
-  assert.equal(mapSignalsToSnapshot(base).tremolo.active, false);
-  assert.equal(mapSignalsToSnapshot(base).tremolo.depth, 0);
-  const closed = mapSignalsToSnapshot({ ...base, right: { present: true, engaged: false, heightNorm: 1 } });
-  assert.equal(closed.tremolo.active, false);
-  assert.equal(closed.tremolo.depth, 0);
 });

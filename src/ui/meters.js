@@ -4,9 +4,7 @@ export function createMeters(rootEl) {
     <div><b>Right ▶</b> <span id="mR">—</span></div>`;
   const mL = rootEl.querySelector('#mL');
   const mR = rootEl.querySelector('#mR');
-  const fmt = (h) => !h.present
-    ? 'not detected'
-    : `${h.engaged ? 'OPEN ✋' : 'closed ✊'} · intensity ${Math.round(h.heightNorm * 100)}%`;
+  const fmt = (h) => (h.present ? `tracking · intensity ${Math.round(h.heightNorm * 100)}%` : 'not detected');
   return {
     update(signals) {
       mL.textContent = fmt(signals.left);

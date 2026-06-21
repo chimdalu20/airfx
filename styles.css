@@ -87,3 +87,9 @@ select#preset { background: #1b2029; color: var(--text); border: 1px solid var(-
 #meters b { color: var(--text); }
 .debug { font: .76rem ui-monospace, monospace; background: rgba(55,224,207,.08); color: #7fe9d8; border: 1px solid rgba(55,224,207,.2); border-radius: 999px; padding: .35rem .7rem; text-align: center; }
 .debug.err { background: rgba(255,90,90,.1); color: #ff9a9a; border-color: rgba(255,90,90,.3); }
+
+/* Clickable effect toggle */
+.fx { cursor: pointer; user-select: none; }
+.fx h3 .pwr { margin-left: auto; font-size: .58rem; font-weight: 800; letter-spacing: .1em; padding: .1rem .4rem; border-radius: 999px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.fx:not(.active) h3 .pwr { color: var(--muted); border-color: var(--line); background: transparent; }
+.fx:not(.active) .dial .arc, .fx:not(.active) .dial .ptr { filter: none; opacity: .4; }

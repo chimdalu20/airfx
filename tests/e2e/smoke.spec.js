@@ -13,7 +13,7 @@ test('rack renders and a dial rotates from a snapshot', async ({ page }) => {
     const panel = createControlsPanel(root);
     panel.update({
       filter: { cutoff: 12000, q: 1 },
-      reverb: { wet: 0.9, active: true },
+      reverb: { wet: 1.3, active: true },
       delay: { mix: 0.5, time: 0.28, feedback: 0.55, active: true },
       tremolo: { rate: 12, depth: 1, active: true },
     });

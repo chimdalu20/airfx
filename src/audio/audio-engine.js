@@ -32,7 +32,7 @@ export function createAudioEngine(ctx, sourceNode) {
 
   // Reverb (fixed IR; wet gain is the live control).
   const convolver = ctx.createConvolver();
-  convolver.buffer = generateImpulseResponse(ctx, { seconds: 2.0, decay: 2.5 });
+  convolver.buffer = generateImpulseResponse(ctx, { seconds: 3.8, decay: 1.8 });
   const reverbWet = ctx.createGain();
   reverbWet.gain.value = 0;
 

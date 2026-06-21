@@ -8,7 +8,7 @@ import { mapSignalsToSnapshot } from './mapping/mapping.js';
 import { createControlsPanel } from './ui/controls-panel.js';
 import { createMeters } from './ui/meters.js';
 import { createOverlay } from './ui/overlay.js';
-import { SMOOTH, PRESENCE, OPEN, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
+import { SMOOTH, PRESENCE, PRESETS, REVERB, DELAY, TREMOLO } from './config.js';
 import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
 
 let profile = DEFAULT_PROFILE;
@@ -23,19 +23,19 @@ function applyPreset(name) {
   TREMOLO.depthMax = p.tremoloDepthMax;
 }
 
+// Per-hand pipeline: smoothed height (intensity) + presence. On/off is by click now,
+// so there is no open/fist gate here; height holds its last value when a hand leaves frame.
 function makeHandPipeline(side) {
   const heightF = new OneEuroFilter(SMOOTH);
   const presence = new Hysteresis(PRESENCE.enter, PRESENCE.exit, false);
-  const openH = new Hysteresis(OPEN.enter, OPEN.exit, false); // open palm (>=3) engages, fist (<=1) disengages
   let lastHeight = 0;
   return (obs, tMs) => {
     const present = presence.update(obs ? obs.confidence : 0);
-    const engaged = present && openH.update(obs ? obs.open : 0);
     if (obs) {
       const raw = applyCalibration({ height: obs.height, size: obs.size }, profile[side]);
       lastHeight = heightF.filter(raw.heightNorm, tMs);
     }
-    return { present, engaged, heightNorm: lastHeight };
+    return { present, heightNorm: lastHeight };
   };
 }
 
@@ -130,7 +130,7 @@ async function start() {
       }
       try {
         const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
-        const snapshot = mapSignalsToSnapshot(signals);
+        const snapshot = mapSignalsToSnapshot(signals, rack.getEnabled());
         engine.apply(snapshot);
         rack.update(snapshot);
         meters.update(signals);
