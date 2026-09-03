@@ -59,6 +59,7 @@ export function runCalibration({ getLatestRaw, voice }) {
         </svg>
       </div>
       <div class="cal-ghost">${buildGhostHandSvg()}</div>
+      <div class="cal-demo">${buildGhostHandSvg()}</div>
       <div class="cal-hud"></div>`;
     stage?.appendChild(guide);
 
@@ -97,6 +98,7 @@ export function runCalibration({ getLatestRaw, voice }) {
       warn: panel.querySelector('.cal-warn'),
       warnText: panel.querySelector('.cal-warn-text'),
       ghost: guide.querySelector('.cal-ghost'),
+      demo: guide.querySelector('.cal-demo'),
       target: guide.querySelector('.cal-target'),
       ringFill: guide.querySelector('.cal-ring-fill'),
       sideTag: guide.querySelector('.cal-side-tag'),
@@ -112,14 +114,16 @@ export function runCalibration({ getLatestRaw, voice }) {
     let paused = false;     // true while the degenerate-range warning is up
 
     function positionGhost(t) {
-      // Both are placed ON the target point. The ring is centred on it; the ghost is
-      // offset so its OWN anchor (landmark 9, the point that is hit-tested) lands there.
-      for (const el of [els.ghost, els.target]) {
+      // All three are placed ON the target point. The ring is centred on it; the ghost and
+      // the moving demo hand are offset so their OWN anchor (landmark 9, the point that is
+      // hit-tested) lands there. The offset is published as CSS variables so the demo's
+      // keyframes stay in sync with the static ghost automatically.
+      for (const el of [els.ghost, els.target, els.demo]) {
         el.style.left = `${t.x * 100}%`;
         el.style.top = `${t.y * 100}%`;
       }
-      els.ghost.style.transform =
-        `translate(-${ANCHOR_IN_BOX.x * 100}%, -${ANCHOR_IN_BOX.y * 100}%)`;
+      guide.style.setProperty('--anchor-x', `-${(ANCHOR_IN_BOX.x * 100).toFixed(2)}%`);
+      guide.style.setProperty('--anchor-y', `-${(ANCHOR_IN_BOX.y * 100).toFixed(2)}%`);
       // The ring is drawn at the true tolerance, so what you see is what is tested.
       els.target.style.width = `${HIT_RADIUS * 2 * 100}%`;
     }
@@ -143,6 +147,7 @@ export function runCalibration({ getLatestRaw, voice }) {
       guide.dataset.dir = s.dir;
       guide.dataset.side = s.side;
       guide.classList.remove('in-target');
+      guide.classList.add('demo-on');
       els.sideTag.textContent = `${s.side} hand`;
       positionGhost(TARGETS[targetKey(s.side, s.dir)]);
       setProgress(0);
@@ -192,8 +197,9 @@ export function runCalibration({ getLatestRaw, voice }) {
         holdStart = null;
         samples = [];
         guide.classList.remove('in-target');
+        guide.classList.add('demo-on');
         setProgress(0);
-        els.hud.textContent = `Hold your ${s.side} hand up on this side`;
+        els.hud.textContent = `Raise your ${s.side} hand`;
         els.live.textContent = 'No hand detected on that side of the picture.';
         return;
       }
@@ -201,6 +207,7 @@ export function runCalibration({ getLatestRaw, voice }) {
       latestHeight = obs.height;
       const inside = handFitsTarget(anchor, target, aspect);
       guide.classList.toggle('in-target', inside);
+      guide.classList.toggle('demo-on', !inside);
 
       if (inside) {
         if (holdStart === null) { holdStart = performance.now(); samples = []; }

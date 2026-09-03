@@ -365,7 +365,37 @@ body.calibrating #meters { opacity: .32; pointer-events: none; filter: saturate(
 /* ── Ghost hand target ────────────────────────────────────────────────── */
 .cal-ghost {
   position: absolute; height: 46%; aspect-ratio: 0.7 / 1;
+  transform: translate(var(--anchor-x, -50%), var(--anchor-y, -58%));
   transition: left .3s ease, top .3s ease;
+}
+
+/* A demonstration hand that travels into the target on a loop, so the motion is shown
+   rather than described. It runs only until the user's own hand is in the ring. */
+.cal-demo {
+  position: absolute; height: 46%; aspect-ratio: 0.7 / 1;
+  opacity: 0; pointer-events: none;
+  transform: translate(var(--anchor-x, -50%), var(--anchor-y, -58%));
+}
+.cal-guide-layer.demo-on[data-dir="up"] .cal-demo { animation: calDemoUp 2.9s ease-in-out infinite; }
+.cal-guide-layer.demo-on[data-dir="down"] .cal-demo { animation: calDemoDown 2.9s ease-in-out infinite; }
+.cal-demo .cal-ghost-bones line { stroke: #ffffff; stroke-dasharray: none; stroke-width: 3; opacity: 1; }
+.cal-demo .cal-ghost-joints circle { fill: #ffffff; r: 2; }
+
+/* Travel is expressed in the element's own height, so it scales with the stage. */
+@keyframes calDemoUp {
+  0%, 6%   { transform: translate(var(--anchor-x), calc(var(--anchor-y) + 105%)) scale(.88); opacity: 0; }
+  18%      { opacity: .85; }
+  60%, 80% { transform: translate(var(--anchor-x), var(--anchor-y)) scale(.88); opacity: .85; }
+  100%     { transform: translate(var(--anchor-x), var(--anchor-y)) scale(.88); opacity: 0; }
+}
+@keyframes calDemoDown {
+  0%, 6%   { transform: translate(var(--anchor-x), calc(var(--anchor-y) - 105%)) scale(.88); opacity: 0; }
+  18%      { opacity: .85; }
+  60%, 80% { transform: translate(var(--anchor-x), var(--anchor-y)) scale(.88); opacity: .85; }
+  100%     { transform: translate(var(--anchor-x), var(--anchor-y)) scale(.88); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cal-guide-layer.demo-on .cal-demo { animation: none; opacity: .5; }
 }
 /* The ring is the real hit tolerance, sized by JS from HIT_RADIUS. */
 .cal-target {
@@ -394,7 +424,7 @@ body.calibrating #meters { opacity: .32; pointer-events: none; filter: saturate(
 
 .cal-hud {
   position: absolute; left: 50%; top: var(--s4); transform: translateX(-50%);
-  max-width: 86%; text-align: center;
+  max-width: 56%; text-align: center;
   background: rgba(16, 16, 16, .85); color: #f3f3f3;
   border-radius: var(--r-tag); padding: 6px 10px;
   font: 400 11px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase;
