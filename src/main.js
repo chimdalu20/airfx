@@ -14,6 +14,11 @@ import { createOnboarding } from './ui/onboarding.js';
 import { createVoice } from './ui/voice.js';
 import { createGrab } from './ui/grab.js';
 
+// True on localhost/127.0.0.1/file:, or when the URL carries ?debug.
+const DEBUG = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)
+  || location.protocol === 'file:'
+  || new URLSearchParams(location.search).has('debug');
+
 let profile = DEFAULT_PROFILE;
 export const getProfile = () => profile;
 export const setProfile = (p) => { profile = p; };
@@ -117,14 +122,15 @@ async function start() {
     const saved = loadProfile();
     if (saved) profile = saved;
     let latestRaw = null;
+    let fpsState = null;
     if (status) status.textContent = '';
 
     const debugEl = document.getElementById('debug');
     camera.start((frame) => {
       latestRaw = frame;
       // FPS sampling
-      window.__airfx_fps = window.__airfx_fps || { last: frame.tMs, n: 0, fps: 0 };
-      const F = window.__airfx_fps;
+      if (!fpsState) fpsState = { last: frame.tMs, n: 0, fps: 0 };
+      const F = fpsState;
       F.n++;
       if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; }
       const hands = (frame._landmarks || []).length;
@@ -169,7 +175,8 @@ async function start() {
     }
     document.getElementById('modeAir').addEventListener('click', () => setMode('air'));
     document.getElementById('modeGrab').addEventListener('click', () => setMode('grab'));
-    window.__airfx = { ctx, engine, camera, setProfile };
+    // Console debug handle: local dev or an explicit ?debug, never on the public build.
+    if (DEBUG) window.__airfx = { ctx, engine, camera, setProfile };
 
     // First-run guided tour (and a persistent "? Tour" replay button).
     const onboarding = createOnboarding({
