@@ -12,12 +12,24 @@ import { FILTER, REVERB, DELAY, TREMOLO, COMPRESSOR, INTENSITY } from '../config
 // enabled = { filter, reverb, delay, tremolo }  (booleans)
 const e = (h) => clamp(h / INTENSITY.fullAt, 0, 1);
 
+// An absent hand means DRY, not "intensity 0".
+//
+// For four of the five effects those are the same thing — zero wet, zero mix, zero depth,
+// bypassed compressor. For the filter they are opposites: intensity 0 is the filter fully
+// CLOSED, which is silence. So with no hand in frame the track played and nothing came out,
+// which reads as a broken app rather than an effect. Presence was already computed and
+// carried in `signals`; it just was not consulted here.
+
 export function mapSignalsToSnapshot(signals, enabled = { filter: true, reverb: true, delay: true, tremolo: true, compressor: true }) {
-  const lh = e(signals.left.heightNorm);
-  const rh = e(signals.right.heightNorm);
+  // `present` defaults to true so a caller passing bare heights still behaves as before.
+  const leftOn = signals.left.present !== false;
+  const rightOn = signals.right.present !== false;
+  const lh = leftOn ? e(signals.left.heightNorm) : 0;
+  const rh = rightOn ? e(signals.right.heightNorm) : 0;
 
   // LEFT hand effects (filter / reverb / delay), each gated by its own click toggle.
-  const cutoff = enabled.filter ? logMap(lh, FILTER.min, FILTER.max) : FILTER.max; // off = filter wide open (dry)
+  // Wide open when the effect is off OR the hand that drives it is not in frame.
+  const cutoff = (enabled.filter && leftOn) ? logMap(lh, FILTER.min, FILTER.max) : FILTER.max;
   const wet = enabled.reverb ? REVERB.wetMax * lh : 0;
   const mix = enabled.delay ? linMap(lh, DELAY.mixMin, DELAY.mixMax) : 0;
   const feedback = enabled.delay ? linMap(lh, DELAY.feedbackMin, DELAY.feedbackMax) : 0;

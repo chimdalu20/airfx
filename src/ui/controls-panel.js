@@ -57,10 +57,10 @@ function knobMarkup(id, label) {
 
 export function createControlsPanel(leftEl, rightEl = leftEl) {
   // Per-effect on/off, toggled by clicking the card (or auto-enabled by a grab).
-  // Only the first effect starts armed. With all five on, a first-time user moves a
-  // hand and hears everything change at once, which teaches them nothing about any
-  // single effect. They arm the rest as they explore.
-  const enabled = Object.fromEntries(LAYOUT.map((fx, i) => [fx.key, i === 0]));
+  // Everything starts armed, so a first gesture audibly does something without hunting for
+  // a switch. The tour teaches switching them OFF, which is the useful direction: you drop
+  // effects out of a mix far more often than you go looking for one that is silent.
+  const enabled = Object.fromEntries(LAYOUT.map((fx) => [fx.key, true]));
   const cards = {};
   const arcs = {};
   const ptrs = {};

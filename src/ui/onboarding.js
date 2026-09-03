@@ -1,12 +1,12 @@
 // First-run guided tour. Mirrors the real flow (calibrate -> load -> left hand -> right
-// hand -> toggle), one job per step, with an animated hand-guide over the camera, a
+// hand -> toggle), one job per step, with a spotlight on the element in question, a
 // spotlight on the real control, voice narration, Next/Back/Skip on every step, and a
 // phase-jump. Idempotent: only sets `airfx.onboarded`; never touches audio/profile state.
 
 const STEPS = [
-  { phase: 'Welcome', title: '👋 Meet AirFX', body: 'Upload a track and bend its sound with your hands in the air — like conducting effects. About 30 seconds to set up.', say: 'Welcome to AirFX. Upload a track and shape its sound with your hands in the air. This quick tour will get you set up.' },
+  { phase: 'Welcome', title: '👋 Meet AirFX', body: 'Play the built-in loop (or your own track) and bend its sound with your hands in the air — like conducting effects. About 30 seconds to set up.', say: 'Welcome to AirFX. Play the built in loop, or your own track, and shape its sound with your hands in the air. This quick tour will get you set up.' },
 
-  { phase: 'Calibrate', title: 'First, your reach', body: 'I’ll learn how high and low your hands go, so lifting a hand means “more effect.”', target: '#calibrateBtn', guide: { side: 'left' }, say: "First, let's set your reach, so lifting a hand means more effect." },
+  { phase: 'Calibrate', title: 'First, your reach', body: 'I’ll learn how high and low your hands go, so lifting a hand means “more effect.”', target: '#calibrateBtn', say: "First, let's set your reach, so lifting a hand means more effect." },
   { phase: 'Calibrate', title: 'Calibrate now', body: 'You’ll reach each open hand up, then down. The camera stays visible — watch the line follow your hand.', target: '#calibrateBtn', cta: 'Start calibration', action: 'calibrate', say: 'Tap start calibration. Then move each open hand high, then low, following the guide.' },
   { phase: 'Calibrate', title: 'Range locked in ✓', body: 'Now you only need to reach about three-quarters of the way up for the full effect.', say: 'Great. Your range is set. Now you only need to reach about three quarters of the way up for the full effect.' },
 
@@ -14,13 +14,13 @@ const STEPS = [
   { phase: 'Track', title: '🎵 Now it’s live', body: 'Everything you hear from here on is shaped by your hands in real time.', target: '.transport', say: 'Nice. Everything you hear now is shaped by your hands, in real time.' },
 
   { phase: 'Left hand', title: 'Left hand = tone', body: 'Your LEFT hand runs Filter, Reverb and Delay — these three cards on the left.', target: '.col-left', say: 'Your left hand controls filter, reverb, and delay. The three cards on the left.' },
-  { phase: 'Left hand', title: 'Lift your left hand', body: 'Open your left hand on the LEFT of the view and slowly raise it.', target: '.stage', guide: { side: 'left' }, say: 'Open your left hand on the left of the view, and slowly raise it.' },
+  { phase: 'Left hand', title: 'Lift your left hand', body: 'Open your left hand on the LEFT of the view and slowly raise it.', target: '.stage', say: 'Open your left hand on the left of the view, and slowly raise it.' },
   { phase: 'Left hand', title: 'Hear it open up?', body: 'The arcs fill as you rise and settle as you lower — that’s all you, live.', target: '.col-left', say: 'Hear it open up? The effects swell as you rise, and settle as you lower.' },
 
-  { phase: 'Right hand', title: 'Right hand = tremolo', body: 'Open your RIGHT hand on the right and raise it for a pulsing wobble.', target: '.stage', guide: { side: 'right' }, say: 'Now your right hand. Open it on the right, and raise it for a pulsing tremolo.' },
+  { phase: 'Right hand', title: 'Right hand = tremolo', body: 'Open your RIGHT hand on the right and raise it for a pulsing wobble.', target: '.stage', say: 'Now your right hand. Open it on the right, and raise it for a pulsing tremolo.' },
   { phase: 'Right hand', title: 'That pulse is tremolo', body: 'The higher you go, the faster and deeper it pulses.', target: '.col-right', say: "That's tremolo. The higher you go, the faster and deeper it pulses." },
 
-  { phase: 'Toggle', title: 'Switch effects on/off', body: 'Tap any effect card to toggle it — perfect for dropping reverb in and out.', target: '.col-left .fx', say: 'Tap any effect card to switch it on or off.' },
+  { phase: 'Toggle', title: 'Switching effects off', body: 'All five start ON. Tap any effect card to switch it OFF — that is how you drop reverb or delay out of the mix. Tap again to bring it back.', target: '.col-left .fx', say: 'All five effects start on. Tap any effect card to switch it off, and tap again to bring it back. That is how you drop an effect out of the mix.' },
 
   { phase: 'Done', title: 'You’re ready 🎚️', body: 'Presets change the vibe · Record saves a take · Mute silences everything and unmutes again · tap “Tour” to replay this anytime.', target: '.actions', last: true, say: "You're all set. Presets change the vibe. Record saves a take. Mute silences everything, and unmutes again. And the tour button replays this anytime. Have fun." },
 ];
@@ -39,7 +39,6 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
     root.className = 'ob-root';
     root.innerHTML = `
       <div class="ob-spot"></div>
-      <div class="ob-hand" hidden><span class="ob-arrow">▲</span>✋<span class="ob-arrow">▼</span></div>
       <div class="ob-card">
         <button class="ob-voice" title="Narration on/off"></button>
         <div class="ob-dots"></div>
@@ -102,17 +101,6 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
     card.style.top = `${top}px`;
   }
 
-  function showHand(guide) {
-    const hand = root.querySelector('.ob-hand');
-    const stage = document.querySelector('.stage');
-    if (!guide || !stage) { hand.hidden = true; return; }
-    const r = stage.getBoundingClientRect();
-    hand.hidden = false;
-    hand.style.top = `${r.top}px`;
-    hand.style.height = `${r.height}px`;
-    hand.style.left = `${guide.side === 'right' ? r.left + r.width * 0.72 : r.left + r.width * 0.28}px`;
-  }
-
   function render() {
     const s = STEPS[i];
     root.querySelector('.ob-title').textContent = s.title;
@@ -132,7 +120,6 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
       cta.appendChild(b);
     }
     reposition();
-    showHand(s.guide);
     voice.speak(s.say || s.body);
   }
 
@@ -143,7 +130,6 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
     const rect = el ? el.getBoundingClientRect() : null;
     spotlight(rect);
     placeCard(rect);
-    showHand(s.guide);
   }
 
   async function runAction(s) {

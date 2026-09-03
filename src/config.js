@@ -1,4 +1,7 @@
-export const FILTER = { min: 80, max: 12000, q: 1.0 };
+// min is the fully-swept-down cutoff. 80 Hz was effectively inaudible, so a hand entering
+// frame low made the track vanish — the same "is it broken?" confusion as an absent hand.
+// 300 Hz is still dramatically muffled but always audible.
+export const FILTER = { min: 300, max: 12000, q: 1.0 };
 export const REVERB = { wetMax: 1.3 };
 export const DELAY = { time: 0.28, feedbackMin: 0.15, feedbackMax: 0.6, mixMin: 0.0, mixMax: 0.55 };
 export const TREMOLO = { rateMin: 3, rateMax: 14, depthMax: 1.0 };
