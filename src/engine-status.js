@@ -25,6 +25,14 @@ export function createEngineStatus(name) {
       error = null;
       emit();
     },
+    // A retry after a failed start is a fresh download, not the old error. Without this
+    // the tour kept showing the previous failure while the engine was loading again.
+    loading() {
+      if (state === 'loading') return;
+      state = 'loading';
+      error = null;
+      emit();
+    },
     fail(err) {
       state = 'error';
       error = err || new Error('unknown');

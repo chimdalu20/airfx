@@ -30,3 +30,26 @@ test('start screen actually hides when its hidden attribute is set', async ({ pa
   await page.evaluate(() => { document.getElementById('startScreen').hidden = true; });
   await expect(page.locator('#startScreen')).toBeHidden();
 });
+
+// Regression: Start is retryable, but it used to rebuild the whole audio chain, and an
+// <audio> element can only ever back ONE MediaElementSourceNode. So the second click threw
+//   InvalidStateError: HTMLMediaElement already connected previously to a different
+//   MediaElementSourceNode
+// which replaced the real reason the first attempt failed and left the page dead until a
+// reload. There is no camera in CI, so both attempts fail — the point is that they fail
+// the SAME way, naming the actual cause.
+test('a second Start reports the real failure, not a broken audio graph', async ({ page }) => {
+  await page.goto('http://localhost:8000');
+
+  await page.click('#startBtn');
+  await expect(page.locator('#startError')).toBeVisible();
+  const first = await page.innerText('#startError');
+
+  await page.click('#startBtn');
+  await expect(page.locator('#startError')).toBeVisible();
+  const second = await page.innerText('#startError');
+
+  expect(second).not.toContain('InvalidStateError');
+  expect(second).not.toContain('createMediaElementSource');
+  expect(second).toBe(first);
+});

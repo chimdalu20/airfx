@@ -11,6 +11,10 @@ export class CameraGestureSource {
   constructor(videoEl) { this.video = videoEl; this.landmarker = null; this.running = false; }
 
   async init() {
+    // init() can fail after getUserMedia succeeded (the CDN engine download is next), and
+    // it is retried from the start screen. Release whatever the last attempt opened, or the
+    // camera light stays on and every retry adds another live track.
+    this.stop();
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
     });

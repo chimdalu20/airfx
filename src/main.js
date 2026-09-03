@@ -1,4 +1,4 @@
-import { createAudioEngine } from './audio/audio-engine.js';
+import { createAudioChain } from './audio/audio-chain.js';
 import { createRecorder } from './audio/recorder.js';
 import { CameraGestureSource, ENGINE_NAME } from './gestures/camera-source.js';
 import { applyCalibration, DEFAULT_PROFILE } from './calibration/profile.js';
@@ -56,91 +56,196 @@ const engineStatus = createEngineStatus(ENGINE_NAME);
 const startBtn = document.getElementById('startBtn');
 const startError = document.getElementById('startError');
 
+const getAudioChain = createAudioChain({
+  createContext: () => new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }),
+});
+
+// The audio graph and every control listener are built exactly ONCE, here. Start is
+// retryable — a failed attempt drops the user back on the start screen with the button
+// live again — and re-running this whole block reconnected the <audio> element to a second
+// MediaElementSourceNode, which an element can never recover from:
+//   InvalidStateError: HTMLMediaElement already connected previously to a different
+//   MediaElementSourceNode
+// That buried the real first failure under a misleading one. It also stacked a duplicate
+// listener on every control, so Mute toggled twice per click and did nothing. Only the
+// camera is retried — see start() below.
+let session = null;
+let starting = false;
+
+async function buildSession() {
+  const voice = createVoice();
+
+  // Audio source is an UPLOADED track (no microphone), routed through the FX graph.
+  const trackEl = document.getElementById('track');
+  const { ctx, engine } = await getAudioChain(trackEl);
+
+  const trackHint = document.getElementById('trackHint');
+  function loadTrack(src, label) {
+    trackEl.src = src;
+    trackEl.play().catch(() => {});
+    if (trackHint) trackHint.textContent = `${label} — raise a hand in front of the camera to hear it change.`;
+  }
+
+  const trackFile = document.getElementById('trackFile');
+  trackFile.addEventListener('change', () => {
+    const file = trackFile.files && trackFile.files[0];
+    if (!file) return;
+    loadTrack(URL.createObjectURL(file), file.name);
+  });
+
+  // Built-in loop, rendered on demand so the page costs nothing until it is asked for.
+  const demoBtn = document.getElementById('demoBtn');
+  let demoUrl = null;
+  demoBtn.addEventListener('click', async () => {
+    if (demoUrl) { loadTrack(demoUrl, 'Demo loop'); return; }
+    const previous = demoBtn.textContent;
+    demoBtn.disabled = true;
+    demoBtn.textContent = 'Building loop…';
+    try {
+      demoUrl = await renderDemoTrack();
+      loadTrack(demoUrl, 'Demo loop');
+    } catch (err) {
+      if (trackHint) trackHint.textContent = `Could not build the demo loop: ${err.message}`;
+    } finally {
+      demoBtn.disabled = false;
+      demoBtn.textContent = previous;
+    }
+  });
+
+  const recorder = createRecorder(engine.recorderStream);
+  const recordBtn = document.getElementById('recordBtn');
+  recordBtn.addEventListener('click', async () => {
+    if (!recorder.active) {
+      recorder.start();
+      recordBtn.textContent = 'Stop';
+      recordBtn.classList.add('danger');
+    } else {
+      try {
+        const blob = await recorder.stop();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } finally {
+        recordBtn.textContent = 'Record';
+        recordBtn.classList.remove('danger');
+      }
+    }
+  });
+
+  const video = document.getElementById('video');
+  const camera = new CameraGestureSource(video);
+
+  const rack = createControlsPanel(
+    document.getElementById('rackLeft'),
+    document.getElementById('rackRight'),
+  );
+  const meters = createMeters(document.getElementById('meters'));
+  const overlay = createOverlay(document.getElementById('overlay'), video);
+  const grab = createGrab({ rack });
+  let mode = 'air'; // 'air' = hand-height intensity; 'grab' = virtual hands grab knobs
+
+  const leftPipe = makeHandPipeline('left');
+  const rightPipe = makeHandPipeline('right');
+
+  // These controls touch only the audio engine and the DOM, never the camera, so
+  // they are wired before the hand model downloads. Wiring them afterwards left
+  // Mute, Calibrate, the mode toggle and the preset inert for several seconds
+  // with nothing on screen saying so.
+  let latestRaw = null;
+  let fpsState = null;
+  // Mute used to be one-way: it called panic() and nothing ever called unmute(),
+  // so a single click silenced the app until reload. It is a toggle now.
+  const panicBtn = document.getElementById('panicBtn');
+  let muted = false;
+  panicBtn.addEventListener('click', () => {
+    muted = !muted;
+    if (muted) engine.panic(); else engine.unmute();
+    panicBtn.textContent = muted ? 'Unmute' : 'Mute';
+    panicBtn.classList.toggle('on', muted);
+    panicBtn.setAttribute('aria-pressed', String(muted));
+  });
+  document.getElementById('calibrateBtn').addEventListener('click', async () => {
+    profile = await runCalibration({ getLatestRaw: () => latestRaw, voice });
+  });
+  const presetSel = document.getElementById('preset');
+  applyPreset(presetSel.value);
+  presetSel.addEventListener('change', () => applyPreset(presetSel.value));
+
+  function setMode(m) {
+    mode = m;
+    grab.setActive(m === 'grab');
+    document.getElementById('modeAir').classList.toggle('on', m === 'air');
+    document.getElementById('modeGrab').classList.toggle('on', m === 'grab');
+  }
+  document.getElementById('modeAir').addEventListener('click', () => setMode('air'));
+  document.getElementById('modeGrab').addEventListener('click', () => setMode('grab'));
+
+  // Console debug handle: local dev or an explicit ?debug, never on the public build.
+  if (DEBUG) window.__airfx = { ctx, engine, camera, setProfile };
+
+  // Steps that need tracking name the engine and wait for it; every other step is usable
+  // immediately, which is why the tour can open before the engine download finishes.
+  const onboarding = createOnboarding({
+    voice,
+    engine: engineStatus,
+    onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw, voice }); },
+  });
+  const helpBtn = document.getElementById('helpBtn');
+  if (helpBtn) helpBtn.addEventListener('click', () => onboarding.start());
+
+  const debugEl = document.getElementById('debug');
+  const onFrame = (frame) => {
+    latestRaw = frame;
+    // FPS sampling
+    if (!fpsState) fpsState = { last: frame.tMs, n: 0, fps: 0 };
+    const F = fpsState;
+    F.n++;
+    if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; }
+    const hands = (frame._landmarks || []).length;
+    if (debugEl) {
+      debugEl.classList.toggle('err', !!frame._error);
+      const detail = DEBUG ? ` · ${F.fps || '…'} fps` : '';
+      debugEl.textContent = frame._error
+        ? frame._error
+        : hands === 0
+          ? 'No hands detected — hold a hand up, palm to the camera'
+          : `Tracking ${hands} hand${hands > 1 ? 's' : ''}${detail}`;
+      debugEl.classList.toggle('waiting', !frame._error && hands === 0);
+    }
+    try {
+      const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
+      meters.update(signals);
+      let snapshot;
+      if (mode === 'grab') {
+        grab.update(frame);
+        snapshot = mapKnobsToSnapshot(grab.getValues(), rack.getEnabled());
+      } else {
+        snapshot = mapSignalsToSnapshot(signals, rack.getEnabled());
+      }
+      engine.apply(snapshot);
+      rack.update(snapshot);
+      overlay.draw(frame._landmarks || []);
+    } catch (err) {
+      if (debugEl) { debugEl.classList.add('err'); debugEl.textContent = `render: ${err.message}`; }
+      console.error(err);
+    }
+  };
+  return { camera, onboarding, onFrame };
+}
+
 async function start() {
+  if (starting) return; // a second click while the first attempt is still in flight
+  starting = true;
+  startBtn.disabled = true;
   startError.hidden = true;
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       throw new Error('Camera needs HTTPS or localhost. Serve over a secure origin.');
     }
-    const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-    await ctx.resume();
-    const voice = createVoice();
-
-    // Audio source is an UPLOADED track (no microphone), routed through the FX graph.
-    const trackEl = document.getElementById('track');
-    const srcNode = ctx.createMediaElementSource(trackEl);
-    const engine = createAudioEngine(ctx, srcNode);
-
-    const trackHint = document.getElementById('trackHint');
-    function loadTrack(src, label) {
-      trackEl.src = src;
-      trackEl.play().catch(() => {});
-      if (trackHint) trackHint.textContent = `${label} — raise a hand in front of the camera to hear it change.`;
-    }
-
-    const trackFile = document.getElementById('trackFile');
-    trackFile.addEventListener('change', () => {
-      const file = trackFile.files && trackFile.files[0];
-      if (!file) return;
-      loadTrack(URL.createObjectURL(file), file.name);
-    });
-
-    // Built-in loop, rendered on demand so the page costs nothing until it is asked for.
-    const demoBtn = document.getElementById('demoBtn');
-    let demoUrl = null;
-    demoBtn.addEventListener('click', async () => {
-      if (demoUrl) { loadTrack(demoUrl, 'Demo loop'); return; }
-      const previous = demoBtn.textContent;
-      demoBtn.disabled = true;
-      demoBtn.textContent = 'Building loop…';
-      try {
-        demoUrl = await renderDemoTrack();
-        loadTrack(demoUrl, 'Demo loop');
-      } catch (err) {
-        if (trackHint) trackHint.textContent = `Could not build the demo loop: ${err.message}`;
-      } finally {
-        demoBtn.disabled = false;
-        demoBtn.textContent = previous;
-      }
-    });
-
-    const recorder = createRecorder(engine.recorderStream);
-    const recordBtn = document.getElementById('recordBtn');
-    recordBtn.addEventListener('click', async () => {
-      if (!recorder.active) {
-        recorder.start();
-        recordBtn.textContent = 'Stop';
-        recordBtn.classList.add('danger');
-      } else {
-        try {
-          const blob = await recorder.stop();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
-          a.click();
-          URL.revokeObjectURL(url);
-        } finally {
-          recordBtn.textContent = 'Record';
-          recordBtn.classList.remove('danger');
-        }
-      }
-    });
-
-    const video = document.getElementById('video');
-    const camera = new CameraGestureSource(video);
-
-    const rack = createControlsPanel(
-      document.getElementById('rackLeft'),
-      document.getElementById('rackRight'),
-    );
-    const meters = createMeters(document.getElementById('meters'));
-    const overlay = createOverlay(document.getElementById('overlay'), video);
-    const grab = createGrab({ rack });
-    let mode = 'air'; // 'air' = hand-height intensity; 'grab' = virtual hands grab knobs
-
-    const leftPipe = makeHandPipeline('left');
-    const rightPipe = makeHandPipeline('right');
+    if (!session) session = await buildSession();
 
     // Reveal the stage immediately so the webcam is visible while the hand model loads.
     document.getElementById('startScreen').hidden = true;
@@ -148,60 +253,21 @@ async function start() {
     const status = document.getElementById('status');
     if (status) status.textContent = `Starting camera · loading the ${ENGINE_NAME} engine…`;
 
-    // These controls touch only the audio engine and the DOM, never the camera, so
-    // they are wired before the hand model downloads. Wiring them afterwards left
-    // Mute, Calibrate, the mode toggle and the preset inert for several seconds
-    // with nothing on screen saying so.
-    let latestRaw = null;
-    let fpsState = null;
-    // Mute used to be one-way: it called panic() and nothing ever called unmute(),
-    // so a single click silenced the app until reload. It is a toggle now.
-    const panicBtn = document.getElementById('panicBtn');
-    let muted = false;
-    panicBtn.addEventListener('click', () => {
-      muted = !muted;
-      if (muted) engine.panic(); else engine.unmute();
-      panicBtn.textContent = muted ? 'Unmute' : 'Mute';
-      panicBtn.classList.toggle('on', muted);
-      panicBtn.setAttribute('aria-pressed', String(muted));
-    });
-    document.getElementById('calibrateBtn').addEventListener('click', async () => {
-      profile = await runCalibration({ getLatestRaw: () => latestRaw, voice });
-    });
-    const presetSel = document.getElementById('preset');
-    applyPreset(presetSel.value);
-    presetSel.addEventListener('change', () => applyPreset(presetSel.value));
-
-    function setMode(m) {
-      mode = m;
-      grab.setActive(m === 'grab');
-      document.getElementById('modeAir').classList.toggle('on', m === 'air');
-      document.getElementById('modeGrab').classList.toggle('on', m === 'grab');
-    }
-    document.getElementById('modeAir').addEventListener('click', () => setMode('air'));
-    document.getElementById('modeGrab').addEventListener('click', () => setMode('grab'));
-
-    // Console debug handle: local dev or an explicit ?debug, never on the public build.
-    if (DEBUG) window.__airfx = { ctx, engine, camera, setProfile };
+    // A previous attempt may have left the engine reading 'error'. This one is a fresh
+    // download, so say so rather than showing the old failure in the tour.
+    engineStatus.loading();
 
     // The tour opens NOW, before the engine download, so the wait is spent learning the app
-    // instead of watching a still frame. Steps that need tracking name the engine and wait
-    // for it; every other step is usable immediately.
-    const onboarding = createOnboarding({
-      voice,
-      engine: engineStatus,
-      onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw, voice }); },
-    });
-    const helpBtn = document.getElementById('helpBtn');
-    if (helpBtn) helpBtn.addEventListener('click', () => onboarding.start());
-    if (onboarding.isFirstRun()) onboarding.start();
+    // instead of watching a still frame. A failed attempt aborts it without marking it seen,
+    // so a retry opens it again.
+    if (session.onboarding.isFirstRun()) session.onboarding.start();
 
     try {
-      await camera.init();
+      await session.camera.init();
     } catch (err) {
       // Send the user back to the start screen without burning their first-run tour.
       engineStatus.fail(err);
-      onboarding.abort();
+      session.onboarding.abort();
       throw err;
     }
 
@@ -209,53 +275,19 @@ async function start() {
     if (saved) profile = saved;
     if (status) status.textContent = '';
 
-    const debugEl = document.getElementById('debug');
-    camera.start((frame) => {
-      latestRaw = frame;
-      // FPS sampling
-      if (!fpsState) fpsState = { last: frame.tMs, n: 0, fps: 0 };
-      const F = fpsState;
-      F.n++;
-      if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; }
-      const hands = (frame._landmarks || []).length;
-      if (debugEl) {
-        debugEl.classList.toggle('err', !!frame._error);
-        const detail = DEBUG ? ` · ${F.fps || '…'} fps` : '';
-        debugEl.textContent = frame._error
-          ? frame._error
-          : hands === 0
-            ? 'No hands detected — hold a hand up, palm to the camera'
-            : `Tracking ${hands} hand${hands > 1 ? 's' : ''}${detail}`;
-        debugEl.classList.toggle('waiting', !frame._error && hands === 0);
-      }
-      try {
-        const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
-        meters.update(signals);
-        let snapshot;
-        if (mode === 'grab') {
-          grab.update(frame);
-          snapshot = mapKnobsToSnapshot(grab.getValues(), rack.getEnabled());
-        } else {
-          snapshot = mapSignalsToSnapshot(signals, rack.getEnabled());
-        }
-        engine.apply(snapshot);
-        rack.update(snapshot);
-        overlay.draw(frame._landmarks || []);
-      } catch (err) {
-        if (debugEl) { debugEl.classList.add('err'); debugEl.textContent = `render: ${err.message}`; }
-        console.error(err);
-      }
-    });
+    session.camera.start(session.onFrame);
 
     // Ready means frames are actually being delivered, not merely that init() resolved.
     engineStatus.ready();
-
   } catch (e) {
     // Revert to the start screen so the error is visible and retryable.
     document.getElementById('app').hidden = true;
     document.getElementById('startScreen').hidden = false;
     startError.hidden = false;
     startError.textContent = `Could not start: ${e.name} – ${e.message}`;
+  } finally {
+    starting = false;
+    startBtn.disabled = false;
   }
 }
 

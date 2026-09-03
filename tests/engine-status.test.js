@@ -58,3 +58,16 @@ test('fail() after ready() is still recorded', () => {
   e.fail(new Error('camera unplugged'));
   assert.equal(e.getState(), 'error');
 });
+
+test('loading() clears a previous failure so a retry is not shown the old error', () => {
+  const e = createEngineStatus('x');
+  e.fail(new Error('cdn unreachable'));
+  const seen = [];
+  e.onChange((state, err) => seen.push([state, err]));
+  e.loading();
+  e.loading(); // idempotent: already loading, so no second notification
+  assert.equal(e.getState(), 'loading');
+  assert.equal(e.isLoading(), true);
+  assert.equal(e.getError(), null);
+  assert.deepEqual(seen, [['loading', null]]);
+});
