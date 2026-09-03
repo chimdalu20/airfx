@@ -57,7 +57,10 @@ function knobMarkup(id, label) {
 
 export function createControlsPanel(leftEl, rightEl = leftEl) {
   // Per-effect on/off, toggled by clicking the card (or auto-enabled by a grab).
-  const enabled = Object.fromEntries(LAYOUT.map((fx) => [fx.key, true]));
+  // Only the first effect starts armed. With all five on, a first-time user moves a
+  // hand and hears everything change at once, which teaches them nothing about any
+  // single effect. They arm the rest as they explore.
+  const enabled = Object.fromEntries(LAYOUT.map((fx, i) => [fx.key, i === 0]));
   const cards = {};
   const arcs = {};
   const ptrs = {};
@@ -69,17 +72,28 @@ export function createControlsPanel(leftEl, rightEl = leftEl) {
     const card = cards[key];
     if (card) {
       card.classList.toggle('active', enabled[key]);
+      card.setAttribute('aria-pressed', String(enabled[key]));
       card.querySelector('.pwr').textContent = enabled[key] ? 'ON' : 'OFF';
     }
   }
 
   for (const fx of LAYOUT) {
     const card = document.createElement('div');
-    card.className = 'fx active';
-    card.title = 'Click to enable / disable';
+    card.className = enabled[fx.key] ? 'fx active' : 'fx';
+    // Keyboard- and screen-reader-operable: it was a bare div with a click handler.
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-pressed', String(enabled[fx.key]));
+    card.setAttribute('aria-label', `${fx.title} effect`);
+    card.title = `Turn ${fx.title} on or off`;
     const knobs = fx.knobs.map(([k, label]) => knobMarkup(`${fx.key}.${k}`, label)).join('');
-    card.innerHTML = `<h3>${fx.title}<span class="pwr">ON</span></h3><div class="knobs">${knobs}</div>`;
+    card.innerHTML = `<h3>${fx.title}<span class="pwr">${enabled[fx.key] ? 'ON' : 'OFF'}</span></h3><div class="knobs">${knobs}</div>`;
     card.addEventListener('click', () => setEnabled(fx.key, !enabled[fx.key]));
+    card.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      e.preventDefault(); // Space would scroll the page
+      setEnabled(fx.key, !enabled[fx.key]);
+    });
     for (const [k] of fx.knobs) {
       const id = `${fx.key}.${k}`;
       const knobEl = card.querySelector(`.knob[data-k="${id}"]`);

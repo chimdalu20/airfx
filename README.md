@@ -5,9 +5,9 @@ by moving your hands in the air in front of your webcam. No install, no build st
 server — hand tracking and the whole audio graph run locally in the tab.
 
 **▸ [Live demo](https://chimdalu20.github.io/airfx/)** — desktop Chrome or Edge, allow the
-camera, headphones recommended.
+camera, headphones recommended. **A demo loop is built in**, so you don't need an audio file.
 
-![AirFX](shots/02-desktop-1280.png)
+![AirFX in light and dark](shots/theme-light.png)
 
 ## What it does
 
@@ -19,7 +19,8 @@ Two modes:
 
 Five effects, each a real Web Audio node: **filter** (cutoff), **reverb** (convolution,
 amount), **delay** (mix + feedback), **tremolo** (rate + depth) and **compressor** (amount).
-Click a card to arm or disarm it. There's a guided first-run tour, a per-hand calibration
+Click a card — or focus it and press Space — to arm or disarm it. Only Filter starts armed, so
+the first gesture teaches you one thing rather than five at once. There's a guided first-run tour, a per-hand calibration
 step so the range fits your actual reach, three presets, and a recorder that captures the
 processed output.
 
@@ -44,7 +45,15 @@ what makes slow gestures stable and fast ones responsive.
 The interface follows a documented design system — **Hyperstudio**, *"blueprint scratched
 into obsidian"* — specified in [`design.md`](design.md): near-black canvas, 1px hairline
 rules instead of shadows, weight-400 type, monospace for every number, and exactly one
-signal colour (`#98ff38`) reserved for live/armed state.
+signal colour reserved for live/armed state.
+
+It ships in **light and dark**, light by default, toggled from the header and remembered per
+browser. Both themes are the same semantic tokens with two value sets, and every text colour is
+asserted at WCAG AA 4.5:1 against its own canvas rather than judged by eye.
+
+The demo loop is **generated at runtime** (`src/audio/demo-track.js`) — a four-bar progression
+rendered through an `OfflineAudioContext` and encoded to WAV in the browser. No audio file ships
+with the repo, so there is nothing to license and no binary weight.
 
 ## Develop
 

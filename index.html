@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AirFX – Hand-Gesture Audio Effects</title>
   <meta name="description" content="AirFX - hand-gesture audio effects in the browser. Wave your hand to drive filter, reverb, delay, tremolo and compression on a live track." />
+  <script>
+    // Inline + synchronous on purpose: module scripts are deferred, so doing this in
+    // main.js would flash the light theme at anyone who chose dark.
+    (function () {
+      var t = 'light';
+      try { var v = localStorage.getItem('airfx.theme'); if (v === 'dark' || v === 'light') t = v; } catch (e) {}
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=IBM+Plex+Mono:wght@400&display=swap" />
@@ -16,13 +25,25 @@
 <body>
   <header>
     <div class="brand"><span class="mark">◆</span> <b>AirFX</b> <span class="tag">gesture fx</span></div>
-    <div id="warn" class="warn">Upload a track, click an effect to arm it, then raise your hand to drive it.</div>
-    <button id="helpBtn" class="help">Tour</button>
+    <div id="warn" class="warn">Play the demo loop, arm an effect, then raise a hand to drive it.</div>
+    <div class="header-actions">
+      <button id="themeBtn" class="help" type="button" aria-pressed="false">Dark</button>
+      <button id="helpBtn" class="help" type="button">Tour</button>
+    </div>
   </header>
 
   <div id="startScreen" class="overlay">
-    <button id="startBtn">Start — allow camera</button>
-    <p id="startError" class="error" hidden></p>
+    <h1 class="hero-title">Play audio effects with your hands</h1>
+    <p class="hero-sub">
+      Your webcam tracks your hands; raising and lowering them drives filter, reverb, delay,
+      tremolo and compression on a track — live, entirely in this tab.
+    </p>
+    <button id="startBtn" type="button">Start — allow camera</button>
+    <p class="hero-note">
+      A demo loop is built in, so you don't need a file. Nothing is uploaded anywhere.
+      Best in desktop Chrome or Edge, with headphones.
+    </p>
+    <p id="startError" class="error" role="alert" hidden></p>
   </div>
 
   <main id="app" hidden>
@@ -39,9 +60,13 @@
         <div class="stage-tag">Live — mirrored</div>
       </div>
       <div class="transport">
-        <label class="upload" for="trackFile">Upload a track</label>
+        <div class="track-actions">
+          <button id="demoBtn" class="upload" type="button">Play demo loop</button>
+          <label class="upload upload--ghost" for="trackFile" tabindex="0" role="button">Upload a track</label>
+        </div>
         <input type="file" id="trackFile" accept="audio/*" hidden />
         <audio id="track" controls loop></audio>
+        <p id="trackHint" class="hint">Start the demo loop, then raise a hand in front of the camera.</p>
       </div>
       <div class="modes">
         <button id="modeAir" class="mode-btn on">Air</button>

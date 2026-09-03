@@ -1,6 +1,7 @@
 # AirFX — Design System
 
 **Style:** Hyperstudio — *"Blueprint scratched into obsidian."*
+**Themes:** light (default) and dark.
 Source: [styles.refero.design](https://styles.refero.design/style/8eb9c53e-d69c-497a-b640-610856cf3a60)
 
 ## Why this style
@@ -25,23 +26,40 @@ have fought the video stage.
 
 ## Palette
 
-| Role | Token | Value |
-|---|---|---|
-| Canvas | `--obsidian` | `#101010` |
-| Depth / wells | `--carbon` | `#080808` |
-| Primary text | `--chalk` | `#f3f3f3` |
-| Secondary text | `--ash` | `#c1c1c1` |
-| Muted text | `--smoke` | `#9c9c9c` |
-| Hairline borders | `--graphite` | `#212121` |
-| Border (hover/strong) | `--iron` | `#474747` |
-| Actions | `--signal-white` | `#ffffff` |
-| Icon strokes only | `--compass-gold` | `#6f6759` |
-| **Live / active only** | `--pulse-green` | `#98ff38` |
-| Card slate | `--card-slate` | `#3b3d45` |
+The system is one set of semantic tokens with two value sets. Nothing in the sheet
+references a raw colour — the theme swap is total.
 
-**Danger** (`Mute` / panic, errors) is the one addition to the source palette: a desaturated
-`#c2413f`. A destructive control in an instrument must be unmistakable, and neither white
-nor gold can carry that meaning. Used on nothing else.
+| Role | Token | Light (default) | Dark |
+|---|---|---|---|
+| Canvas | `--canvas` | `#f4f4f1` paper | `#101010` obsidian |
+| Depth / wells | `--well` | `#ffffff` | `#080808` |
+| Primary text | `--ink` | `#101010` | `#f3f3f3` |
+| Secondary text | `--ink-2` | `#3d3d3d` | `#c1c1c1` |
+| Muted text | `--ink-3` | `#6b6b67` | `#9c9c9c` |
+| Hairline borders | `--rule` | `#dededa` | `#212121` |
+| Border (hover/strong) | `--rule-2` | `#b4b4ae` | `#474747` |
+| Solid action fill | `--action` | `#101010` | `#ffffff` |
+| Text on that fill | `--on-action` | `#f4f4f1` | `#101010` |
+| Icon strokes only | `--gold` | `#6f6759` | `#8a8072` |
+| **Live / active only** | `--pulse` | `#3f7d00` | `#98ff38` |
+| Danger | `--danger` | `#b3261e` | `#ff6b64` |
+
+Three tokens deliberately do **not** invert with the theme:
+
+- `--scrim` always *darkens* (`rgba(16,16,16,.58)` light, `rgba(8,8,8,.88)` dark). A scrim's
+  job is to dim the page behind a modal; a light scrim over a light canvas washes the whole
+  interface out instead of focusing it. `--on-scrim` is near-white in both themes.
+- `--badge-fixed` backs the stage tag, which floats over the video feed — arbitrary brightness,
+  so it needs its own dark plate in both themes rather than the canvas's.
+
+**Contrast is measured, not eyeballed.** Every text token clears WCAG AA 4.5:1 against its
+canvas in both themes (verified in `tests/visual-check.mjs`); `--ink-3` was darkened from
+`#767672` to `#6b6b67` because it measured 4.14:1 on paper.
+
+Light is the default. The stored choice wins, and `prefers-color-scheme` is deliberately not
+consulted — the default is a product decision, not a system preference. The theme is stamped
+on `<html>` by a synchronous inline script in `<head>`, before first paint, so a dark-mode
+visitor never sees a white flash.
 
 ## Typography
 
@@ -77,7 +95,11 @@ nor gold can carry that meaning. Used on nothing else.
 - **Status badge** — `#1a1a1a` fill, 1px graphite border, 4px radius, Pulse Green dot prefix.
 - **Effect card** — transparent, 1px graphite hairline. Inactive dials stroke in `--iron`.
   Armed cards get a white border, a Pulse Green status dot, and their arc strokes in chalk.
-- **Section divider** — 1px graphite, full content width.
+- **Section divider** — 1px `--rule`, full content width.
+- **Theme toggle** — a ghost button in the header that advertises the *action*, not the state
+  ("Dark" when you are in light). Carries `aria-pressed` and a matching `aria-label`.
+- **Focus** — a 2px `--pulse` ring with 2px offset on every interactive surface. Effect cards
+  are `role="button"`, tabbable, `aria-pressed`, and operable with Enter or Space.
 
 ## Rules
 
