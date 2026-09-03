@@ -3,7 +3,7 @@
 // spotlight on the real control, voice narration, Next/Back/Skip on every step, and a
 // phase-jump. Idempotent: only sets `airfx.onboarded`; never touches audio/profile state.
 
-const STEPS = [
+export const STEPS = [
   { phase: 'Welcome', title: '👋 Meet AirFX', body: 'Play the built-in loop (or your own track) and bend its sound with your hands in the air — like conducting effects. About 30 seconds to set up.', say: 'Welcome to AirFX. Play the built in loop, or your own track, and shape its sound with your hands in the air. This quick tour will get you set up.' },
 
   { phase: 'Calibrate', title: 'First, your reach', body: 'I’ll learn how high and low your hands go, so lifting a hand means “more effect.”', target: '#calibrateBtn', say: "First, let's set your reach, so lifting a hand means more effect." },
@@ -24,7 +24,7 @@ const STEPS = [
 
   { phase: 'Modes', title: 'Two ways to play', body: 'Air is what you have been doing: your hand HEIGHT drives every armed effect at once, like conducting. Grab is the fine version — one knob at a time, set exactly where you want it.', target: '.modes', say: 'There are two ways to play. Air is what you have been doing: hand height drives every armed effect at once. Grab is the fine version, one knob at a time.' },
   { phase: 'Modes', title: 'How Grab works', body: 'Tap Grab and a ring appears for each hand, following your index fingertip. Put a ring over a knob, pinch thumb and finger together to take hold, then move to turn it. Release to let go — the knob stays where you left it.', target: '#modeGrab', say: 'Tap grab, and a ring appears for each hand, following your index finger. Put a ring over a knob, pinch your thumb and finger together to take hold, then move to turn it. Release, and the knob stays where you left it.' },
-  { phase: 'Modes', title: 'Grab arms as you go', body: 'Grabbing a knob switches that effect on automatically, so you can pull an effect back into the mix just by reaching for it. Tap Air to go back to whole-hand control.', target: '.modes', say: 'Grabbing a knob switches that effect on automatically. Tap air to go back to whole hand control.' },
+  { phase: 'Modes', title: 'Grab arms as you go', body: 'Grabbing a knob switches that effect on automatically, so you can pull an effect back into the mix just by reaching for it. Tap Air to go back to whole-hand control.', target: '#modeAir', say: 'Grabbing a knob switches that effect on automatically. Tap air to go back to whole hand control.' },
 
   { phase: 'Presets', title: 'Presets set the ceiling', body: 'Subtle, Lush and Extreme change how FAR the effects can go at full reach — the same gesture goes further on Extreme. Lush is the default.', target: '#preset', say: 'Presets set the ceiling. Subtle, lush and extreme change how far the effects go at full reach. The same gesture goes further on extreme.' },
 
@@ -33,7 +33,7 @@ const STEPS = [
   { phase: 'Mute', title: 'Mute is your panic button', body: 'Mute silences the output instantly if a sound gets away from you — a runaway delay, say. It stays lit while muted; press it again to bring the sound back.', target: '#panicBtn', say: 'Mute silences everything instantly if a sound gets away from you. It stays lit while muted. Press it again to bring the sound back.' },
   { phase: 'Mute', title: 'Recalibrate anytime', body: 'Moved your chair, or someone else wants a go? Tap Calibrate to redo your reach — it takes about fifteen seconds.', target: '#calibrateBtn', say: 'Moved your chair, or someone else wants a go? Tap calibrate to redo your reach. It takes about fifteen seconds.' },
 
-  { phase: 'Done', title: 'You’re ready 🎚️', body: 'Tap “Tour” in the header to replay this anytime. Headphones are worth it.', target: '.actions', last: true, say: "You're all set. Tap tour in the header to replay this anytime. Headphones are worth it. Have fun." },
+  { phase: 'Done', title: 'You’re ready 🎚️', body: 'Tap “Tour” in the header to replay this anytime. Headphones are worth it.', last: true, say: "You're all set. Tap tour in the header to replay this anytime. Headphones are worth it. Have fun." },
 ];
 
 const FLAG = 'airfx.onboarded';
