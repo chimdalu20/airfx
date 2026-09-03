@@ -51,6 +51,11 @@ Three tokens deliberately do **not** invert with the theme:
   interface out instead of focusing it. `--on-scrim` is near-white in both themes.
 - `--badge-fixed` backs the stage tag, which floats over the video feed — arbitrary brightness,
   so it needs its own dark plate in both themes rather than the canvas's.
+- `--pulse-on-video` is the live colour for anything drawn on the camera image (the
+  calibration ghost, its hold ring, its HUD). Light theme's `--pulse` is a dark green that
+  reads well on paper and badly on a dark video frame, so on-video elements keep the bright
+  `#98ff38` in both themes. Same rule as the scrim: **a token that sits on media is fixed by
+  what it sits on, not by the canvas.**
 
 **Contrast is measured, not eyeballed.** Every text token clears WCAG AA 4.5:1 against its
 canvas in both themes (verified in `tests/visual-check.mjs`); `--ink-3` was darkened from
@@ -130,6 +135,22 @@ visitor never sees a white flash.
    screen outside Pulse Green, and they are confined to those two transient overlays — the
    instrument panel itself contains none. A line drawing would be more on-style; teaching a
    physical gesture with one would be worse.
+
+## Calibration guide
+
+Calibration is an aiming task, so its guidance is drawn on the camera image rather than
+described in words beside it:
+
+- The half of the frame not in play is darkened to `rgba(0,0,0,.66)` with a 2px white
+  divider. A light tint was invisible against a brightly lit room — the split has to survive
+  any camera image.
+- A **ghost hand** marks where the hand should go. It is the same 21-point MediaPipe skeleton
+  the live overlay draws (`HAND_CONNECTIONS`, shared by both), so "fits the outline" is
+  literally the two shapes overlapping.
+- The ghost is offset by its own anchor (landmark 9, the middle MCP) rather than centred, so
+  the drawn outline coincides with the point actually hit-tested.
+- The ring around it is drawn at the true hit tolerance (`HIT_RADIUS`), so what you see is
+  what is tested, and it doubles as the hold-progress indicator.
 
 ## Responsive
 

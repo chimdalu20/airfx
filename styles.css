@@ -18,6 +18,7 @@
   --scrim: rgba(16, 16, 16, .58);   /* always darkens — never follows the canvas */
   --on-scrim: #f4f4f1;
   --badge-fixed: rgba(16, 16, 16, .72);  /* over video, which is any brightness */
+  --pulse-on-video: #98ff38;             /* live colour over video: fixed, like the scrim */
   --badge: #eaeae6;
 
   --sans: "Inter", "Satoshi", "General Sans", system-ui, -apple-system, Segoe UI, sans-serif;
@@ -46,6 +47,7 @@
   --scrim: rgba(8, 8, 8, .88);
   --on-scrim: #f3f3f3;
   --badge-fixed: rgba(8, 8, 8, .72);
+  --pulse-on-video: #98ff38;
   --badge: #1a1a1a;
   color-scheme: dark;
 }
@@ -330,12 +332,8 @@ body.calibrating #meters { opacity: .32; pointer-events: none; filter: saturate(
 .cal-text { margin: 0; font: 400 18px/1.31 var(--sans); color: var(--ink); }
 .cal-sub { margin: 0; font: 400 13px/1.5 var(--sans); color: var(--ink-3); max-width: 58ch; }
 .cal-actions { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s2); }
-.cal-capture {
-  background: var(--action); color: var(--on-action); border: 0;
-  border-radius: var(--r-pill); padding: 12px 24px;
-  font: 400 13px var(--sans); letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
-}
-.cal-capture:disabled { opacity: .4; cursor: not-allowed; }
+.cal-manual { font: 400 13px var(--sans); }
+.cal-manual[hidden] { display: none; }
 .cal-live { font: 400 13px var(--mono); color: var(--ink-3); min-width: 0; }
 .cal-panel.warning { border-color: var(--danger); }
 .cal-warn { border-top: 1px solid var(--rule); padding-top: var(--s3); margin-top: var(--s2); }
@@ -348,49 +346,68 @@ body.calibrating #meters { opacity: .32; pointer-events: none; filter: saturate(
 /* ── The guide drawn over the video ───────────────────────────────────── */
 .cal-guide-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 
-/* Which half of the picture this hand is read from. The feed is mirrored, so
-   screen-left really is the viewer's left hand. */
-.cal-half {
+/* The half that is NOT in play is heavily darkened. A faint tint was invisible against a
+   real, brightly lit room — the split has to survive any camera image. */
+.cal-dim {
   position: absolute; top: 0; bottom: 0; width: 50%;
-  background: rgba(255, 255, 255, .10);
-  border-right: 1px dashed rgba(255, 255, 255, .35);
-  transition: left .2s ease;
+  background: rgba(0, 0, 0, .66);
+  transition: left .25s ease;
 }
-.cal-guide-layer[data-side="left"] .cal-half { left: 0; }
-.cal-guide-layer[data-side="right"] .cal-half { left: 50%; border-right: 0; border-left: 1px dashed rgba(255, 255, 255, .35); }
+.cal-guide-layer[data-side="left"] .cal-dim { left: 50%; }
+.cal-guide-layer[data-side="right"] .cal-dim { left: 0; }
+
+.cal-divider {
+  position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+  background: rgba(255, 255, 255, .9); transform: translateX(-50%);
+}
 
 .cal-side-tag {
   position: absolute; bottom: var(--s3); width: 50%; text-align: center;
-  font: 400 8px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
-  color: #f3f3f3; text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+  font: 400 11px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase;
+  color: #ffffff; text-shadow: 0 1px 4px rgba(0, 0, 0, .95);
 }
 .cal-guide-layer[data-side="left"] .cal-side-tag { left: 0; }
 .cal-guide-layer[data-side="right"] .cal-side-tag { left: 50%; }
 
-/* Live hand height. */
-.cal-now, .cal-peak { position: absolute; left: 0; right: 0; height: 0; }
-.cal-now { border-top: 2px solid var(--pulse); }
-.cal-peak { border-top: 1px dashed rgba(255, 255, 255, .75); }
-.cal-now[hidden], .cal-peak[hidden] { display: none; }
-
-.cal-now-tag, .cal-peak-tag {
-  position: absolute; right: var(--s2); transform: translateY(-50%);
-  padding: 3px 6px; border-radius: var(--r-tag);
-  font: 400 8px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
-  white-space: nowrap;
+/* ── Ghost hand target ────────────────────────────────────────────────── */
+.cal-ghost {
+  position: absolute; height: 46%; aspect-ratio: 0.7 / 1;
+  transition: left .3s ease, top .3s ease;
 }
-.cal-now-tag { background: var(--pulse); color: #08140a; }
-.cal-peak-tag { background: rgba(16, 16, 16, .78); color: #f3f3f3; right: auto; left: var(--s2); }
-.cal-guide-layer.at-peak .cal-peak { opacity: 0; }
-
-.cal-nohand {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  max-width: 80%; text-align: center;
-  background: rgba(16, 16, 16, .82); color: #f3f3f3;
-  border-radius: var(--r-card); padding: var(--s3) var(--s4);
-  font: 400 13px/1.5 var(--mono);
+/* The ring is the real hit tolerance, sized by JS from HIT_RADIUS. */
+.cal-target {
+  position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%);
+  transition: left .3s ease, top .3s ease;
 }
-.cal-nohand[hidden] { display: none; }
+.cal-ghost-svg { position: absolute; height: 100%; width: 100%; overflow: visible; }
+.cal-ghost-bones line {
+  stroke: #ffffff; stroke-width: 2.6; stroke-linecap: round; fill: none;
+  opacity: .95; stroke-dasharray: 7 5;
+}
+.cal-ghost-joints circle { fill: #ffffff; opacity: .8; }
+.cal-ghost-svg { filter: drop-shadow(0 0 6px rgba(0, 0, 0, .95)); }
+
+/* Hold ring: fills while the hand stays inside the target. */
+.cal-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+.cal-ring-track { fill: none; stroke: rgba(255, 255, 255, .30); stroke-width: 2.5; }
+.cal-ring-fill {
+  fill: none; stroke: var(--pulse-on-video); stroke-width: 4; stroke-linecap: round;
+  stroke-dasharray: 0 100; transition: stroke-dasharray .08s linear;
+}
+
+/* In the target: the ghost goes solid and green, so "it fits" is unmistakable. */
+.cal-guide-layer.in-target .cal-ghost-bones line { stroke: var(--pulse-on-video); stroke-dasharray: none; opacity: 1; }
+.cal-guide-layer.in-target .cal-ghost-joints circle { fill: var(--pulse-on-video); opacity: 1; }
+
+.cal-hud {
+  position: absolute; left: 50%; top: var(--s4); transform: translateX(-50%);
+  max-width: 86%; text-align: center;
+  background: rgba(16, 16, 16, .85); color: #f3f3f3;
+  border-radius: var(--r-tag); padding: 6px 10px;
+  font: 400 11px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+}
+.cal-hud:empty { display: none; }
+.cal-guide-layer.in-target .cal-hud { background: var(--pulse-on-video); color: #08140a; }
 
 /* ── Grab-mode virtual-hand cursors ───────────────────────────────────── */
 .grab-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }

@@ -30,7 +30,7 @@ processed output.
 |---|---|
 | Hand tracking | MediaPipe Tasks Vision `HandLandmarker`, loaded from CDN via an import map |
 | Signal conditioning | Landmarks → normalized height/distance → **One Euro filter** to kill jitter without adding lag |
-| Calibration | Captures each hand's real low/high reach, so `heightNorm` spans the user's range rather than the frame |
+| Calibration | Aim-based: a ghost hand marks the target, and holding your hand in it captures automatically — no button to press, so nothing drags your hand out of position |
 | Audio | A fixed Web Audio graph; gesture values are mapped log or linear per parameter and ramped, never set abruptly |
 | Rendering | Plain ES modules, no framework and no bundler |
 
