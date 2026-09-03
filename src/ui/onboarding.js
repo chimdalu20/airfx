@@ -7,10 +7,10 @@ const STEPS = [
   { phase: 'Welcome', title: '👋 Meet AirFX', body: 'Upload a track and bend its sound with your hands in the air — like conducting effects. About 30 seconds to set up.', say: 'Welcome to AirFX. Upload a track and shape its sound with your hands in the air. This quick tour will get you set up.' },
 
   { phase: 'Calibrate', title: 'First, your reach', body: 'I’ll learn how high and low your hands go, so lifting a hand means “more effect.”', target: '#calibrateBtn', guide: { side: 'left' }, say: "First, let's set your reach, so lifting a hand means more effect." },
-  { phase: 'Calibrate', title: 'Calibrate now', body: 'You’ll move each open hand HIGH, then LOW. Tap the button and follow the live guide.', target: '#calibrateBtn', cta: 'Start calibration', action: 'calibrate', say: 'Tap start calibration. Then move each open hand high, then low, following the guide.' },
+  { phase: 'Calibrate', title: 'Calibrate now', body: 'You’ll reach each open hand up, then down. The camera stays visible — watch the line follow your hand.', target: '#calibrateBtn', cta: 'Start calibration', action: 'calibrate', say: 'Tap start calibration. Then move each open hand high, then low, following the guide.' },
   { phase: 'Calibrate', title: 'Range locked in ✓', body: 'Now you only need to reach about three-quarters of the way up for the full effect.', say: 'Great. Your range is set. Now you only need to reach about three quarters of the way up for the full effect.' },
 
-  { phase: 'Track', title: 'Load some music', body: 'Tap Upload and pick any audio file — it loops so you can keep jamming.', target: '.upload', say: 'Now tap upload, and pick any audio file. It loops, so you can keep jamming.' },
+  { phase: 'Track', title: 'Load some music', body: 'Tap Play demo loop — or Upload a track and pick any audio file. Either one loops so you can keep jamming.', target: '.track-actions', say: 'Tap play demo loop, or upload a track of your own. Either one loops, so you can keep jamming.' },
   { phase: 'Track', title: '🎵 Now it’s live', body: 'Everything you hear from here on is shaped by your hands in real time.', target: '.transport', say: 'Nice. Everything you hear now is shaped by your hands, in real time.' },
 
   { phase: 'Left hand', title: 'Left hand = tone', body: 'Your LEFT hand runs Filter, Reverb and Delay — these three cards on the left.', target: '.col-left', say: 'Your left hand controls filter, reverb, and delay. The three cards on the left.' },
@@ -22,7 +22,7 @@ const STEPS = [
 
   { phase: 'Toggle', title: 'Switch effects on/off', body: 'Tap any effect card to toggle it — perfect for dropping reverb in and out.', target: '.col-left .fx', say: 'Tap any effect card to switch it on or off.' },
 
-  { phase: 'Done', title: 'You’re ready 🎚️', body: 'Presets change the vibe · Record saves a take · Mute is your panic button · tap “? Tour” to replay this anytime.', target: '.actions', last: true, say: "You're all set. Presets change the vibe. Record saves a take. And the question mark button replays this tour anytime. Have fun." },
+  { phase: 'Done', title: 'You’re ready 🎚️', body: 'Presets change the vibe · Record saves a take · Mute silences everything and unmutes again · tap “Tour” to replay this anytime.', target: '.actions', last: true, say: "You're all set. Presets change the vibe. Record saves a take. Mute silences everything, and unmutes again. And the tour button replays this anytime. Have fun." },
 ];
 
 const FLAG = 'airfx.onboarded';

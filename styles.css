@@ -307,30 +307,90 @@ select#preset {
   color: var(--gold);
 }
 
-/* ── Calibration ──────────────────────────────────────────────────────── */
-.cal-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-content: center; padding: var(--s5); background: var(--scrim); }
-.cal-card {
-  width: min(360px, calc(100vw - 24px)); text-align: center;
-  background: var(--canvas); border: 1px solid var(--rule); border-radius: var(--r-card); padding: var(--s6);
+/* ── Calibration ──────────────────────────────────────────────────────────
+   The panel sits BELOW the stage and the guidance is drawn ON the video. A
+   centred modal over a scrim used to cover the one thing you need to see. */
+
+/* Everything except the stage and the calibration panel steps back. */
+body.calibrating .col-left,
+body.calibrating .col-right,
+body.calibrating .transport,
+body.calibrating .modes,
+body.calibrating .actions,
+body.calibrating #meters { opacity: .32; pointer-events: none; filter: saturate(.4); }
+
+.cal-panel {
+  border: 1px solid var(--action); border-radius: var(--r-card);
+  padding: var(--s4) var(--s5) var(--s5);
+  display: flex; flex-direction: column; gap: var(--s2);
 }
+.cal-head { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 .cal-step { font: 400 8px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); }
-.cal-guide { height: 92px; display: grid; justify-items: center; align-content: center; gap: var(--s1); margin: var(--s4) 0; }
-.cal-hand { font-size: 2.6rem; animation: calUp 1.6s ease-in-out infinite; }
-.cal-guide[data-dir="down"] .cal-hand { animation: calDown 1.6s ease-in-out infinite; }
-.cal-arrow { color: var(--gold); }
-.cal-guide[data-dir="down"] .cal-arrow { transform: rotate(180deg); }
-@keyframes calUp { 0%, 100% { transform: translateY(16px); } 50% { transform: translateY(-16px); } }
-@keyframes calDown { 0%, 100% { transform: translateY(-16px); } 50% { transform: translateY(16px); } }
-.cal-text { font: 400 18px/1.31 var(--sans); margin: var(--s2) 0 var(--s3); }
-.cal-live { font: 400 13px var(--mono); color: var(--ink-3); margin-bottom: var(--s5); }
-.cal-live b { color: var(--pulse); font-weight: 400; }
-.cal-actions { display: flex; gap: var(--s2); justify-content: center; flex-wrap: wrap; }
+.cal-skip { margin-left: auto; font: 400 13px var(--sans); padding: 6px 12px; }
+.cal-text { margin: 0; font: 400 18px/1.31 var(--sans); color: var(--ink); }
+.cal-sub { margin: 0; font: 400 13px/1.5 var(--sans); color: var(--ink-3); max-width: 58ch; }
+.cal-actions { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s2); }
 .cal-capture {
   background: var(--action); color: var(--on-action); border: 0;
   border-radius: var(--r-pill); padding: 12px 24px;
   font: 400 13px var(--sans); letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
 }
 .cal-capture:disabled { opacity: .4; cursor: not-allowed; }
+.cal-live { font: 400 13px var(--mono); color: var(--ink-3); min-width: 0; }
+.cal-panel.warning { border-color: var(--danger); }
+.cal-warn { border-top: 1px solid var(--rule); padding-top: var(--s3); margin-top: var(--s2); }
+.cal-warn[hidden] { display: none; }
+.cal-warn-text { margin: 0 0 var(--s3); font: 400 13px/1.5 var(--sans); color: var(--danger); max-width: 58ch; }
+.cal-warn-actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.cal-redo { border-color: var(--danger); color: var(--danger); }
+.cal-redo:hover { background: var(--danger); color: var(--on-action); border-color: var(--danger); }
+
+/* ── The guide drawn over the video ───────────────────────────────────── */
+.cal-guide-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+
+/* Which half of the picture this hand is read from. The feed is mirrored, so
+   screen-left really is the viewer's left hand. */
+.cal-half {
+  position: absolute; top: 0; bottom: 0; width: 50%;
+  background: rgba(255, 255, 255, .10);
+  border-right: 1px dashed rgba(255, 255, 255, .35);
+  transition: left .2s ease;
+}
+.cal-guide-layer[data-side="left"] .cal-half { left: 0; }
+.cal-guide-layer[data-side="right"] .cal-half { left: 50%; border-right: 0; border-left: 1px dashed rgba(255, 255, 255, .35); }
+
+.cal-side-tag {
+  position: absolute; bottom: var(--s3); width: 50%; text-align: center;
+  font: 400 8px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+  color: #f3f3f3; text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+}
+.cal-guide-layer[data-side="left"] .cal-side-tag { left: 0; }
+.cal-guide-layer[data-side="right"] .cal-side-tag { left: 50%; }
+
+/* Live hand height. */
+.cal-now, .cal-peak { position: absolute; left: 0; right: 0; height: 0; }
+.cal-now { border-top: 2px solid var(--pulse); }
+.cal-peak { border-top: 1px dashed rgba(255, 255, 255, .75); }
+.cal-now[hidden], .cal-peak[hidden] { display: none; }
+
+.cal-now-tag, .cal-peak-tag {
+  position: absolute; right: var(--s2); transform: translateY(-50%);
+  padding: 3px 6px; border-radius: var(--r-tag);
+  font: 400 8px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.cal-now-tag { background: var(--pulse); color: #08140a; }
+.cal-peak-tag { background: rgba(16, 16, 16, .78); color: #f3f3f3; right: auto; left: var(--s2); }
+.cal-guide-layer.at-peak .cal-peak { opacity: 0; }
+
+.cal-nohand {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  max-width: 80%; text-align: center;
+  background: rgba(16, 16, 16, .82); color: #f3f3f3;
+  border-radius: var(--r-card); padding: var(--s3) var(--s4);
+  font: 400 13px/1.5 var(--mono);
+}
+.cal-nohand[hidden] { display: none; }
 
 /* ── Grab-mode virtual-hand cursors ───────────────────────────────────── */
 .grab-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
