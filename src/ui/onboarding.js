@@ -7,24 +7,24 @@ export const STEPS = [
   { phase: 'Welcome', title: '👋 Meet AirFX', body: 'Play the built-in loop (or your own track) and bend its sound with your hands in the air — like conducting effects. About 30 seconds to set up.', say: 'Welcome to AirFX. Play the built in loop, or your own track, and shape its sound with your hands in the air. This quick tour will get you set up.' },
 
   { phase: 'Calibrate', title: 'First, your reach', body: 'I’ll learn how high and low your hands go, so lifting a hand means “more effect.”', target: '#calibrateBtn', say: "First, let's set your reach, so lifting a hand means more effect." },
-  { phase: 'Calibrate', title: 'Calibrate now', body: 'You’ll reach each open hand up, then down. The camera stays visible — watch the line follow your hand.', target: '#calibrateBtn', cta: 'Start calibration', action: 'calibrate', say: 'Tap start calibration. Then move each open hand high, then low, following the guide.' },
+  { phase: 'Calibrate', title: 'Calibrate now', needsEngine: true, body: 'You’ll reach each open hand up, then down. The camera stays visible — watch the line follow your hand.', target: '#calibrateBtn', cta: 'Start calibration', action: 'calibrate', say: 'Tap start calibration. Then move each open hand high, then low, following the guide.' },
   { phase: 'Calibrate', title: 'Range locked in ✓', body: 'Now you only need to reach about three-quarters of the way up for the full effect.', say: 'Great. Your range is set. Now you only need to reach about three quarters of the way up for the full effect.' },
 
   { phase: 'Track', title: 'Load some music', body: 'Tap Play demo loop — or Upload a track and pick any audio file. Either one loops so you can keep jamming.', target: '.track-actions', say: 'Tap play demo loop, or upload a track of your own. Either one loops, so you can keep jamming.' },
   { phase: 'Track', title: '🎵 Now it’s live', body: 'Everything you hear from here on is shaped by your hands in real time.', target: '.transport', say: 'Nice. Everything you hear now is shaped by your hands, in real time.' },
 
   { phase: 'Left hand', title: 'Left hand = tone', body: 'Your LEFT hand runs Filter, Reverb and Delay — these three cards on the left.', target: '.col-left', say: 'Your left hand controls filter, reverb, and delay. The three cards on the left.' },
-  { phase: 'Left hand', title: 'Lift your left hand', body: 'Open your left hand on the LEFT of the view and slowly raise it.', target: '.stage', say: 'Open your left hand on the left of the view, and slowly raise it.' },
-  { phase: 'Left hand', title: 'Hear it open up?', body: 'The arcs fill as you rise and settle as you lower — that’s all you, live.', target: '.col-left', say: 'Hear it open up? The effects swell as you rise, and settle as you lower.' },
+  { phase: 'Left hand', title: 'Lift your left hand', needsEngine: true, body: 'Open your left hand on the LEFT of the view and slowly raise it.', target: '.stage', say: 'Open your left hand on the left of the view, and slowly raise it.' },
+  { phase: 'Left hand', title: 'Hear it open up?', needsEngine: true, body: 'The arcs fill as you rise and settle as you lower — that’s all you, live.', target: '.col-left', say: 'Hear it open up? The effects swell as you rise, and settle as you lower.' },
 
-  { phase: 'Right hand', title: 'Right hand = tremolo', body: 'Open your RIGHT hand on the right and raise it for a pulsing wobble.', target: '.stage', say: 'Now your right hand. Open it on the right, and raise it for a pulsing tremolo.' },
-  { phase: 'Right hand', title: 'That pulse is tremolo', body: 'The higher you go, the faster and deeper it pulses.', target: '.col-right', say: "That's tremolo. The higher you go, the faster and deeper it pulses." },
+  { phase: 'Right hand', title: 'Right hand = tremolo', needsEngine: true, body: 'Open your RIGHT hand on the right and raise it for a pulsing wobble.', target: '.stage', say: 'Now your right hand. Open it on the right, and raise it for a pulsing tremolo.' },
+  { phase: 'Right hand', title: 'That pulse is tremolo', needsEngine: true, body: 'The higher you go, the faster and deeper it pulses.', target: '.col-right', say: "That's tremolo. The higher you go, the faster and deeper it pulses." },
 
   { phase: 'Toggle', title: 'Switching effects off', body: 'All five start ON. Tap any effect card to switch it OFF — that is how you drop reverb or delay out of the mix. Tap again to bring it back.', target: '.col-left .fx', say: 'All five effects start on. Tap any effect card to switch it off, and tap again to bring it back. That is how you drop an effect out of the mix.' },
 
   { phase: 'Modes', title: 'Two ways to play', body: 'Air is what you have been doing: your hand HEIGHT drives every armed effect at once, like conducting. Grab is the fine version — one knob at a time, set exactly where you want it.', target: '.modes', say: 'There are two ways to play. Air is what you have been doing: hand height drives every armed effect at once. Grab is the fine version, one knob at a time.' },
-  { phase: 'Modes', title: 'How Grab works', body: 'Tap Grab and a ring appears for each hand, following your index fingertip. Put a ring over a knob, pinch thumb and finger together to take hold, then move to turn it. Release to let go — the knob stays where you left it.', target: '#modeGrab', say: 'Tap grab, and a ring appears for each hand, following your index finger. Put a ring over a knob, pinch your thumb and finger together to take hold, then move to turn it. Release, and the knob stays where you left it.' },
-  { phase: 'Modes', title: 'Grab arms as you go', body: 'Grabbing a knob switches that effect on automatically, so you can pull an effect back into the mix just by reaching for it. Tap Air to go back to whole-hand control.', target: '#modeAir', say: 'Grabbing a knob switches that effect on automatically. Tap air to go back to whole hand control.' },
+  { phase: 'Modes', title: 'How Grab works', needsEngine: true, body: 'Tap Grab and a ring appears for each hand, following your index fingertip. Put a ring over a knob, pinch thumb and finger together to take hold, then move to turn it. Release to let go — the knob stays where you left it.', target: '#modeGrab', say: 'Tap grab, and a ring appears for each hand, following your index finger. Put a ring over a knob, pinch your thumb and finger together to take hold, then move to turn it. Release, and the knob stays where you left it.' },
+  { phase: 'Modes', title: 'Grab arms as you go', needsEngine: true, body: 'Grabbing a knob switches that effect on automatically, so you can pull an effect back into the mix just by reaching for it. Tap Air to go back to whole-hand control.', target: '#modeAir', say: 'Grabbing a knob switches that effect on automatically. Tap air to go back to whole hand control.' },
 
   { phase: 'Presets', title: 'Presets set the ceiling', body: 'Subtle, Lush and Extreme change how FAR the effects can go at full reach — the same gesture goes further on Extreme. Lush is the default.', target: '#preset', say: 'Presets set the ceiling. Subtle, lush and extreme change how far the effects go at full reach. The same gesture goes further on extreme.' },
 
@@ -39,9 +39,12 @@ export const STEPS = [
 const FLAG = 'airfx.onboarded';
 const NOVOICE = { speak() {}, cancel() {}, isEnabled: () => false, setEnabled() {}, supported: false };
 
-export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
+const NOENGINE = { name: 'hand tracking', isReady: () => true, isLoading: () => false, getState: () => 'ready', onChange: () => () => {} };
+
+export function createOnboarding({ onCalibrate, voice = NOVOICE, engine = NOENGINE } = {}) {
   let root = null;
   let i = 0;
+  let unsubscribeEngine = null;
   const phases = [...new Set(STEPS.map((s) => s.phase))];
   const firstIndexOf = (phase) => STEPS.findIndex((s) => s.phase === phase);
 
@@ -56,6 +59,7 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
         <h3 class="ob-title"></h3>
         <p class="ob-body"></p>
         <div class="ob-cta"></div>
+        <div class="ob-engine" hidden><span class="ob-engine-dot"></span><span class="ob-engine-text"></span></div>
         <div class="ob-nav">
           <button class="ob-back ghost">Back</button>
           <button class="ob-next">Next</button>
@@ -72,6 +76,7 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
       if (voice.isEnabled()) voice.speak(STEPS[i].say || STEPS[i].body);
       else voice.cancel();
     });
+    unsubscribeEngine = engine.onChange(() => { if (root) renderEngine(); });
     const dots = root.querySelector('.ob-dots');
     phases.forEach((p) => {
       const d = document.createElement('button');
@@ -131,6 +136,7 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
       cta.appendChild(b);
     }
     reposition();
+    renderEngine();
     voice.speak(s.say || s.body);
   }
 
@@ -144,6 +150,7 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
   }
 
   async function runAction(s) {
+    if (s.needsEngine && !engine.isReady()) return;
     if (s.action === 'calibrate' && onCalibrate) {
       voice.cancel();
       root.style.display = 'none'; // step aside so the calibration overlay is unobstructed
@@ -152,15 +159,50 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
     }
   }
 
+  // Shows, by name, that a step is waiting on the engine — and clears itself when it lands.
+  function renderEngine() {
+    if (!root) return;
+    const s = STEPS[i];
+    const box = root.querySelector('.ob-engine');
+    const text = root.querySelector('.ob-engine-text');
+    const ctaBtn = root.querySelector('.ob-ctabtn');
+    const blocked = !!s.needsEngine && !engine.isReady();
+
+    box.hidden = !blocked;
+    box.classList.toggle('failed', engine.getState() === 'error');
+    if (blocked) {
+      text.textContent = engine.getState() === 'error'
+        ? `${engine.name} engine failed to load — reload the page to try again`
+        : `${engine.name} engine — loading…`;
+    }
+    // You cannot calibrate without tracking, so the action waits with the engine.
+    if (ctaBtn) {
+      ctaBtn.disabled = blocked;
+      ctaBtn.textContent = blocked && engine.isLoading() ? 'Waiting for the engine…' : (s.cta || '');
+    }
+  }
+
   function go(n) {
     i = Math.max(0, Math.min(STEPS.length - 1, n));
     render();
   }
 
+  function teardown() {
+    if (unsubscribeEngine) { unsubscribeEngine(); unsubscribeEngine = null; }
+    if (root) { window.removeEventListener('resize', reposition); root.remove(); root = null; }
+  }
+
   function finish() {
     voice.cancel();
     localStorage.setItem(FLAG, '1');
-    if (root) { window.removeEventListener('resize', reposition); root.remove(); root = null; }
+    teardown();
+  }
+
+  // Closes the tour WITHOUT marking it seen — for when startup fails and the user is sent
+  // back to the start screen. They should still get the tour on their next attempt.
+  function abort() {
+    voice.cancel();
+    teardown();
   }
 
   function start() {
@@ -169,5 +211,5 @@ export function createOnboarding({ onCalibrate, voice = NOVOICE } = {}) {
     go(0);
   }
 
-  return { start, isFirstRun: () => !localStorage.getItem(FLAG) };
+  return { start, abort, isFirstRun: () => !localStorage.getItem(FLAG) };
 }

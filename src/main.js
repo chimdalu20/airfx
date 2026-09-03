@@ -1,6 +1,6 @@
 import { createAudioEngine } from './audio/audio-engine.js';
 import { createRecorder } from './audio/recorder.js';
-import { CameraGestureSource } from './gestures/camera-source.js';
+import { CameraGestureSource, ENGINE_NAME } from './gestures/camera-source.js';
 import { applyCalibration, DEFAULT_PROFILE } from './calibration/profile.js';
 import { OneEuroFilter } from './smoothing/one-euro.js';
 import { Hysteresis } from './smoothing/debounce.js';
@@ -14,6 +14,7 @@ import { createOnboarding } from './ui/onboarding.js';
 import { createVoice } from './ui/voice.js';
 import { createGrab } from './ui/grab.js';
 import { createThemeToggle } from './ui/theme.js';
+import { createEngineStatus } from './engine-status.js';
 import { renderDemoTrack } from './audio/demo-track.js';
 
 // True on localhost/127.0.0.1/file:, or when the URL carries ?debug.
@@ -50,6 +51,7 @@ function makeHandPipeline(side) {
 }
 
 createThemeToggle(document.getElementById('themeBtn'));
+const engineStatus = createEngineStatus(ENGINE_NAME);
 
 const startBtn = document.getElementById('startBtn');
 const startError = document.getElementById('startError');
@@ -144,7 +146,7 @@ async function start() {
     document.getElementById('startScreen').hidden = true;
     document.getElementById('app').hidden = false;
     const status = document.getElementById('status');
-    if (status) status.textContent = 'Starting camera + loading hand model…';
+    if (status) status.textContent = `Starting camera · loading the ${ENGINE_NAME} engine…`;
 
     // These controls touch only the audio engine and the DOM, never the camera, so
     // they are wired before the hand model downloads. Wiring them afterwards left
@@ -179,11 +181,29 @@ async function start() {
     document.getElementById('modeAir').addEventListener('click', () => setMode('air'));
     document.getElementById('modeGrab').addEventListener('click', () => setMode('grab'));
 
-
     // Console debug handle: local dev or an explicit ?debug, never on the public build.
     if (DEBUG) window.__airfx = { ctx, engine, camera, setProfile };
 
-    await camera.init();
+    // The tour opens NOW, before the engine download, so the wait is spent learning the app
+    // instead of watching a still frame. Steps that need tracking name the engine and wait
+    // for it; every other step is usable immediately.
+    const onboarding = createOnboarding({
+      voice,
+      engine: engineStatus,
+      onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw, voice }); },
+    });
+    const helpBtn = document.getElementById('helpBtn');
+    if (helpBtn) helpBtn.addEventListener('click', () => onboarding.start());
+    if (onboarding.isFirstRun()) onboarding.start();
+
+    try {
+      await camera.init();
+    } catch (err) {
+      // Send the user back to the start screen without burning their first-run tour.
+      engineStatus.fail(err);
+      onboarding.abort();
+      throw err;
+    }
 
     const saved = loadProfile();
     if (saved) profile = saved;
@@ -227,16 +247,9 @@ async function start() {
       }
     });
 
-    // First-run guided tour, plus the persistent "Tour" replay button. Started only
-    // once the camera feed is live: it teaches hand gestures, so it should not open
-    // over a blank stage.
-    const onboarding = createOnboarding({
-      voice,
-      onCalibrate: async () => { profile = await runCalibration({ getLatestRaw: () => latestRaw, voice }); },
-    });
-    const helpBtn = document.getElementById('helpBtn');
-    if (helpBtn) helpBtn.addEventListener('click', () => onboarding.start());
-    if (onboarding.isFirstRun()) onboarding.start();
+    // Ready means frames are actually being delivered, not merely that init() resolved.
+    engineStatus.ready();
+
   } catch (e) {
     // Revert to the start screen so the error is visible and retryable.
     document.getElementById('app').hidden = true;
