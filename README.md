@@ -52,7 +52,7 @@ signal colour (`#98ff38`) reserved for live/armed state.
 npm test          # 39 unit tests, node:test, no dependencies
 npm run serve     # http://localhost:8000
 npm run test:e2e  # Playwright smoke test
-node tests/visual-check.mjs   # screenshots + responsive/overflow assertions
+node tests/visual-check.mjs   # screenshots + responsive/overflow assertions (needs `npm i -D playwright`)
 ```
 
 Unit tests cover the pure layers — smoothing, gesture→value mapping, knob geometry,

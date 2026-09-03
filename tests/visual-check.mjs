@@ -1,4 +1,4 @@
-import { chromium } from 'file:///C:/Users/Chimdalu/AppData/Local/npm-cache/_npx/705bc6b22212b352/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 
 const URL = 'http://localhost:8123/';
 const browser = await chromium.launch({
