@@ -1,0 +1,283 @@
+﻿=== RANGE 8263ca2..HEAD ===
+
+=== COMMITS ===
+feafebb feat(audio): Task 1 — multi-deck audio plumbing (engine output, mixer, deck)
+
+=== STAT ===
+ src/audio/audio-engine.js | 19 ++++--------
+ src/audio/deck.js         | 68 ++++++++++++++++++++++++++++++++++++++++++
+ src/audio/mixer.js        | 76 +++++++++++++++++++++++++++++++++++++++++++++++
+ tests/mixer.test.js       | 49 ++++++++++++++++++++++++++++++
+ 4 files changed, 199 insertions(+), 13 deletions(-)
+
+=== DIFF (-U8) ===
+diff --git a/src/audio/audio-engine.js b/src/audio/audio-engine.js
+index e8442ad..7210551 100644
+--- a/src/audio/audio-engine.js
++++ b/src/audio/audio-engine.js
+@@ -46,37 +46,30 @@ export function createAudioEngine(ctx, sourceNode) {
+   reverbWet.gain.value = 0;
+ 
+   const dry = ctx.createGain();
+   dry.gain.value = 1.0;
+ 
+   const master = ctx.createGain();
+   master.gain.value = 1.0;
+ 
+-  const limiter = ctx.createDynamicsCompressor();
+-  limiter.threshold.value = -6;
+-  limiter.knee.value = 0;
+-  limiter.ratio.value = 20;
+-  limiter.attack.value = 0.003;
+-  limiter.release.value = 0.25;
++  // Post-FX output gain — connects to the mixer's inputA or inputB.
++  const output = ctx.createGain();
++  output.gain.value = 1.0;
+ 
+-  const dest = ctx.createMediaStreamDestination();
+-
+-  // Routing: source -> comp -> filter -> tremGain -> {dry, delay, reverb} -> master -> limiter -> out + recorder
++  // Routing: source -> comp -> filter -> tremGain -> {dry, delay, reverb} -> master -> output
+   source.connect(comp);
+   comp.connect(filter);
+   filter.connect(tremGain);
+   tremGain.connect(dry).connect(master);
+   tremGain.connect(delay);
+   delay.connect(feedback).connect(delay);
+   delay.connect(delayWet).connect(master);
+   tremGain.connect(convolver).connect(reverbWet).connect(master);
+-  master.connect(limiter);
+-  limiter.connect(ctx.destination);
+-  limiter.connect(dest);
++  master.connect(output);
+ 
+   const tc = PARAM.timeConstant;
+ 
+   function apply(snap) {
+     const t = ctx.currentTime;
+     filter.frequency.setTargetAtTime(snap.filter.cutoff, t, tc);
+     filter.Q.setTargetAtTime(snap.filter.q, t, tc);
+     reverbWet.gain.setTargetAtTime(snap.reverb.active ? snap.reverb.wet : 0, t, tc);
+@@ -89,10 +82,10 @@ export function createAudioEngine(ctx, sourceNode) {
+     tremGain.gain.setTargetAtTime(1 - depth / 2, t, tc);
+     comp.threshold.setTargetAtTime(snap.compressor.active ? snap.compressor.threshold : 0, t, tc);
+     comp.ratio.setTargetAtTime(snap.compressor.active ? snap.compressor.ratio : 1, t, tc);
+   }
+ 
+   function panic() { master.gain.setTargetAtTime(0, ctx.currentTime, 0.01); }
+   function unmute() { master.gain.setTargetAtTime(1, ctx.currentTime, 0.05); }
+ 
+-  return { apply, panic, unmute, recorderStream: dest.stream };
++  return { apply, panic, unmute, output };
+ }
+diff --git a/src/audio/deck.js b/src/audio/deck.js
+new file mode 100644
+index 0000000..4799e51
+--- /dev/null
++++ b/src/audio/deck.js
+@@ -0,0 +1,68 @@
++import { createAudioEngine } from './audio-engine.js';
++
++/**
++ * Creates a playback deck: an <audio> element piped through the FX engine and
++ * connected to a mixer input.
++ *
++ * @param {AudioContext} ctx
++ * @param {AudioNode} mixerInput - The mixer's inputA or inputB GainNode.
++ * @returns {{
++ *   load(file: File): void,
++ *   play(): Promise<void>,
++ *   pause(): void,
++ *   toggle(): Promise<void>,
++ *   readonly playing: boolean,
++ *   readonly name: string,
++ *   engine: { apply(snapshot: object): void, panic(): void, unmute(): void, output: GainNode },
++ *   el: HTMLAudioElement,
++ * }}
++ */
++export function createDeck(ctx, mixerInput) {
++  const el = new Audio();
++  el.loop = true;
++  el.crossOrigin = 'anonymous';
++
++  // Wire: <audio> -> MediaElementSource -> FX engine -> mixerInput
++  const src = ctx.createMediaElementSource(el);
++  const engine = createAudioEngine(ctx, src);
++  engine.output.connect(mixerInput);
++
++  let _name = '';
++
++  function load(file) {
++    // Revoke any previous object URL to avoid memory leaks.
++    if (el.src && el.src.startsWith('blob:')) {
++      URL.revokeObjectURL(el.src);
++    }
++    el.src = URL.createObjectURL(file);
++    _name = file.name;
++    el.play().catch(() => {
++      // Autoplay may be blocked; the UI can call play() after a user gesture.
++    });
++  }
++
++  function play() {
++    return el.play();
++  }
++
++  function pause() {
++    el.pause();
++  }
++
++  function toggle() {
++    if (el.paused) return el.play();
++    el.pause();
++    return Promise.resolve();
++  }
++
++  return {
++    load,
++    play,
++    pause,
++    toggle,
++    get playing() { return !el.paused; },
++    get name() { return _name; },
++    engine,
++    el,
++  };
++}
+diff --git a/src/audio/mixer.js b/src/audio/mixer.js
+new file mode 100644
+index 0000000..ac3e07f
+--- /dev/null
++++ b/src/audio/mixer.js
+@@ -0,0 +1,76 @@
++import { PARAM } from '../config.js';
++
++/**
++ * Equal-power crossfade gains.
++ * x is clamped to [0,1]; at x=0 all signal goes to A, at x=1 all to B.
++ * @param {number} x - crossfader position 0..1
++ * @returns {{ a: number, b: number }}
++ */
++export function crossfadeGains(x) {
++  const t = Math.max(0, Math.min(1, x));
++  return {
++    a: Math.cos(t * Math.PI / 2),
++    b: Math.sin(t * Math.PI / 2),
++  };
++}
++
++/**
++ * Creates the master mixer: two crossfade input gains -> master gain -> limiter
++ * -> ctx.destination and a MediaStreamDestination (for recording).
++ *
++ * @param {AudioContext} ctx
++ * @returns {{
++ *   inputA: GainNode,
++ *   inputB: GainNode,
++ *   setCrossfade(x: number): void,
++ *   panic(): void,
++ *   unmute(): void,
++ *   recorderStream: MediaStream,
++ * }}
++ */
++export function createMixer(ctx) {
++  // Per-deck crossfade gains (start at equal power center).
++  const inputA = ctx.createGain();
++  const inputB = ctx.createGain();
++  const { a, b } = crossfadeGains(0.5);
++  inputA.gain.value = a;
++  inputB.gain.value = b;
++
++  // Master gain (panic/unmute target).
++  const master = ctx.createGain();
++  master.gain.value = 1.0;
++
++  // Safety limiter (hard brick-wall on the master bus).
++  const limiter = ctx.createDynamicsCompressor();
++  limiter.threshold.value = -6;
++  limiter.knee.value = 0;
++  limiter.ratio.value = 20;
++  limiter.attack.value = 0.003;
++  limiter.release.value = 0.25;
++
++  // Recorder destination.
++  const dest = ctx.createMediaStreamDestination();
++
++  // Routing: inputA ─┐
++  //                   ├─> master -> limiter -> destination
++  //          inputB ─┘                      -> recorderDest
++  inputA.connect(master);
++  inputB.connect(master);
++  master.connect(limiter);
++  limiter.connect(ctx.destination);
++  limiter.connect(dest);
++
++  const tc = PARAM.timeConstant;
++
++  function setCrossfade(x) {
++    const t = ctx.currentTime;
++    const gains = crossfadeGains(x);
++    inputA.gain.setTargetAtTime(gains.a, t, tc);
++    inputB.gain.setTargetAtTime(gains.b, t, tc);
++  }
++
++  function panic() { master.gain.setTargetAtTime(0, ctx.currentTime, 0.01); }
++  function unmute() { master.gain.setTargetAtTime(1, ctx.currentTime, 0.05); }
++
++  return { inputA, inputB, setCrossfade, panic, unmute, recorderStream: dest.stream };
++}
+diff --git a/tests/mixer.test.js b/tests/mixer.test.js
+new file mode 100644
+index 0000000..843796d
+--- /dev/null
++++ b/tests/mixer.test.js
+@@ -0,0 +1,49 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { crossfadeGains } from '../src/audio/mixer.js';
++
++const EPSILON = 1e-3;
++
++function approxEq(actual, expected, eps = EPSILON) {
++  assert.ok(
++    Math.abs(actual - expected) <= eps,
++    `Expected ${actual} ≈ ${expected} (±${eps})`
++  );
++}
++
++test('crossfadeGains(0) => a≈1, b≈0 (full deck A)', () => {
++  const { a, b } = crossfadeGains(0);
++  approxEq(a, 1);
++  approxEq(b, 0);
++});
++
++test('crossfadeGains(1) => a≈0, b≈1 (full deck B)', () => {
++  const { a, b } = crossfadeGains(1);
++  approxEq(a, 0);
++  approxEq(b, 1);
++});
++
++test('crossfadeGains(0.5) => a≈b≈0.707 (equal power center)', () => {
++  const { a, b } = crossfadeGains(0.5);
++  approxEq(a, Math.SQRT1_2); // cos(π/4) = 1/√2
++  approxEq(b, Math.SQRT1_2); // sin(π/4) = 1/√2
++});
++
++test('crossfadeGains clamps x < 0 to 0', () => {
++  const { a, b } = crossfadeGains(-1);
++  approxEq(a, 1);
++  approxEq(b, 0);
++});
++
++test('crossfadeGains clamps x > 1 to 1', () => {
++  const { a, b } = crossfadeGains(2);
++  approxEq(a, 0);
++  approxEq(b, 1);
++});
++
++test('crossfadeGains satisfies a²+b²=1 at arbitrary x (equal-power property)', () => {
++  for (const x of [0.1, 0.25, 0.33, 0.6, 0.8]) {
++    const { a, b } = crossfadeGains(x);
++    approxEq(a * a + b * b, 1, 1e-9);
++  }
++});

@@ -1,0 +1,34 @@
+﻿=== RANGE a0688cf..HEAD (Task 10 fix only) ===
+
+=== COMMITS ===
+86733c5 refactor: remove dead after-variable + no-op transform in controls rack
+
+=== STAT ===
+ src/ui/controls-panel.js | 2 --
+ 1 file changed, 2 deletions(-)
+
+=== DIFF (-U10) ===
+diff --git a/src/ui/controls-panel.js b/src/ui/controls-panel.js
+index d6a1744..f6ce364 100644
+--- a/src/ui/controls-panel.js
++++ b/src/ui/controls-panel.js
+@@ -39,19 +39,17 @@ export function createControlsPanel(rootEl) {
+     groups[fx.key] = card;
+   }
+ 
+   function update(snapshot) {
+     const angles = computeDialAngles(snapshot);
+     for (const fx of LAYOUT) {
+       groups[fx.key].classList.toggle('active', !!angles[fx.key].active);
+       for (const [knobKey] of fx.knobs) {
+         const dial = dials[`${fx.key}.${knobKey}`];
+         dial.style.setProperty('--angle', `${angles[fx.key][knobKey]}deg`);
+-        const after = `rotate(${angles[fx.key][knobKey]}deg)`;
+-        dial.style.transform = ''; // dial itself stays; pointer is the ::after pseudo
+         dial.dataset.angle = angles[fx.key][knobKey].toFixed(1);
+       }
+     }
+   }
+ 
+   return { update };
+ }

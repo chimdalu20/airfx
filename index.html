@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AirFX – Hand-Gesture Audio Effects</title>
+  <meta name="description" content="AirFX - hand-gesture audio effects in the browser. Wave your hand to drive filter, reverb, delay, tremolo and compression on a live track." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=IBM+Plex+Mono:wght@400&display=swap" />
   <link rel="stylesheet" href="styles.css" />
   <script type="importmap">
   { "imports": { "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs" } }
@@ -12,18 +16,18 @@
 <body>
   <header>
     <div class="brand"><span class="mark">◆</span> <b>AirFX</b> <span class="tag">gesture fx</span></div>
-    <div id="warn" class="warn">Upload a track ▸ click an effect to toggle it on/off ▸ raise your hand = more intense</div>
-    <button id="helpBtn" class="help">? Tour</button>
+    <div id="warn" class="warn">Upload a track, click an effect to arm it, then raise your hand to drive it.</div>
+    <button id="helpBtn" class="help">Tour</button>
   </header>
 
   <div id="startScreen" class="overlay">
-    <button id="startBtn">Start (allow camera)</button>
+    <button id="startBtn">Start — allow camera</button>
     <p id="startError" class="error" hidden></p>
   </div>
 
   <main id="app" hidden>
     <section class="col col-left">
-      <h2 class="col-title">◀ Left hand</h2>
+      <h2 class="col-title">Left hand</h2>
       <div id="rackLeft" class="rack"></div>
     </section>
 
@@ -32,20 +36,20 @@
         <video id="video" playsinline muted></video>
         <canvas id="overlay"></canvas>
         <div id="status" class="status"></div>
-        <div class="stage-tag">You (mirrored)</div>
+        <div class="stage-tag">Live — mirrored</div>
       </div>
       <div class="transport">
-        <label class="upload" for="trackFile">📁 Upload a track</label>
+        <label class="upload" for="trackFile">Upload a track</label>
         <input type="file" id="trackFile" accept="audio/*" hidden />
         <audio id="track" controls loop></audio>
       </div>
       <div class="modes">
-        <button id="modeAir" class="mode-btn on">✋ Air</button>
-        <button id="modeGrab" class="mode-btn">🤏 Grab</button>
+        <button id="modeAir" class="mode-btn on">Air</button>
+        <button id="modeGrab" class="mode-btn">Grab</button>
       </div>
       <div class="actions">
         <button id="calibrateBtn">Calibrate</button>
-        <button id="recordBtn">⏺ Record</button>
+        <button id="recordBtn">Record</button>
         <button id="panicBtn" class="danger">Mute</button>
         <select id="preset" aria-label="Preset"><option>Lush</option><option>Subtle</option><option>Extreme</option></select>
       </div>
@@ -54,7 +58,7 @@
     </section>
 
     <section class="col col-right">
-      <h2 class="col-title">Right hand ▶</h2>
+      <h2 class="col-title">Right hand</h2>
       <div id="rackRight" class="rack"></div>
     </section>
   </main>

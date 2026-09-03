@@ -1,0 +1,97 @@
+﻿=== RANGE 77e4d0b..HEAD ===
+
+=== COMMITS ===
+f1d0898 feat: record + export processed audio
+
+=== STAT ===
+ src/audio/recorder.js | 22 ++++++++++++++++++++++
+ src/main.js           | 21 +++++++++++++++++++++
+ 2 files changed, 43 insertions(+)
+
+=== DIFF (-U10) ===
+diff --git a/src/audio/recorder.js b/src/audio/recorder.js
+new file mode 100644
+index 0000000..16e172d
+--- /dev/null
++++ b/src/audio/recorder.js
+@@ -0,0 +1,22 @@
++const TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
++
++export function createRecorder(stream) {
++  const mimeType = TYPES.find((t) => MediaRecorder.isTypeSupported(t)) || '';
++  let rec = null;
++  let chunks = [];
++  return {
++    start() {
++      chunks = [];
++      rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
++      rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
++      rec.start();
++    },
++    stop() {
++      return new Promise((resolve) => {
++        rec.onstop = () => resolve(new Blob(chunks, { type: mimeType || 'audio/webm' }));
++        rec.stop();
++      });
++    },
++    get active() { return !!rec && rec.state === 'recording'; },
++  };
++}
+diff --git a/src/main.js b/src/main.js
+index cda8ccf..bcdf70a 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -1,11 +1,12 @@
+ import { createAudioEngine } from './audio/audio-engine.js';
++import { createRecorder } from './audio/recorder.js';
+ import { CameraGestureSource } from './gestures/camera-source.js';
+ import { applyCalibration, DEFAULT_PROFILE } from './calibration/profile.js';
+ import { OneEuroFilter } from './smoothing/one-euro.js';
+ import { Debounced, Hysteresis } from './smoothing/debounce.js';
+ import { mapSignalsToSnapshot } from './mapping/mapping.js';
+ import { createControlsPanel } from './ui/controls-panel.js';
+ import { createMeters } from './ui/meters.js';
+ import { createOverlay } from './ui/overlay.js';
+ import { SMOOTH, DEBOUNCE, PRESENCE } from './config.js';
+ import { loadProfile, saveProfile, runCalibration } from './calibration/calibration-ui.js';
+@@ -41,20 +42,40 @@ const startError = document.getElementById('startError');
+ async function start() {
+   startError.hidden = true;
+   try {
+     const audioStream = await navigator.mediaDevices.getUserMedia({
+       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+     });
+     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+     await ctx.resume();
+     const engine = createAudioEngine(ctx, audioStream);
+ 
++    const recorder = createRecorder(engine.recorderStream);
++    const recordBtn = document.getElementById('recordBtn');
++    recordBtn.addEventListener('click', async () => {
++      if (!recorder.active) {
++        recorder.start();
++        recordBtn.textContent = '■ Stop';
++        recordBtn.classList.add('danger');
++      } else {
++        const blob = await recorder.stop();
++        recordBtn.textContent = '● Record';
++        recordBtn.classList.remove('danger');
++        const url = URL.createObjectURL(blob);
++        const a = document.createElement('a');
++        a.href = url;
++        a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
++        a.click();
++        URL.revokeObjectURL(url);
++      }
++    });
++
+     const video = document.getElementById('video');
+     const camera = new CameraGestureSource(video);
+     await camera.init();
+ 
+     const saved = loadProfile();
+     if (saved) profile = saved;
+     let latestRaw = null;
+ 
+     const rack = createControlsPanel(document.getElementById('rack'));
+     const meters = createMeters(document.getElementById('meters'));

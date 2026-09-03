@@ -7,9 +7,9 @@ export function createOverlay(canvas, video) {
     canvas.height = video.videoHeight || canvas.clientHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const r = Math.max(3, canvas.width / 220);
-    ctx.strokeStyle = '#4f7cff';
-    ctx.fillStyle = '#9ec1ff';
-    ctx.lineWidth = Math.max(2, canvas.width / 320);
+    ctx.strokeStyle = '#f3f3f3';   // chalk bones
+    ctx.fillStyle = '#6f6759';     // compass-gold joints
+    ctx.lineWidth = Math.max(1, canvas.width / 640);
     ctx.lineJoin = 'round';
     for (const lm of hands) {
       for (const [a, b] of CONNECTIONS) {

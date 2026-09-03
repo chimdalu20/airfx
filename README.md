@@ -1,11 +1,78 @@
 # AirFX
 
-Hand-gesture-controlled voice effects in the browser. Vanilla JS, no build step.
+**Hand-gesture audio effects in the browser.** Upload a track, arm an effect, and drive it
+by moving your hands in the air in front of your webcam. No install, no build step, no
+server — hand tracking and the whole audio graph run locally in the tab.
+
+**▸ [Live demo](https://chimdalu20.github.io/airfx/)** — desktop Chrome or Edge, allow the
+camera, headphones recommended.
+
+![AirFX](shots/02-desktop-1280.png)
+
+## What it does
+
+Two modes:
+
+- **Air** — raise or lower each hand to drive the armed effects continuously. Left hand
+  controls filter, reverb and delay; right hand controls tremolo and compression.
+- **Grab** — a virtual cursor per hand. Pinch to grab a knob, move to turn it, release to let go.
+
+Five effects, each a real Web Audio node: **filter** (cutoff), **reverb** (convolution,
+amount), **delay** (mix + feedback), **tremolo** (rate + depth) and **compressor** (amount).
+Click a card to arm or disarm it. There's a guided first-run tour, a per-hand calibration
+step so the range fits your actual reach, three presets, and a recorder that captures the
+processed output.
+
+## How it works
+
+| Piece | Approach |
+|---|---|
+| Hand tracking | MediaPipe Tasks Vision `HandLandmarker`, loaded from CDN via an import map |
+| Signal conditioning | Landmarks → normalized height/distance → **One Euro filter** to kill jitter without adding lag |
+| Calibration | Captures each hand's real low/high reach, so `heightNorm` spans the user's range rather than the frame |
+| Audio | A fixed Web Audio graph; gesture values are mapped log or linear per parameter and ramped, never set abruptly |
+| Rendering | Plain ES modules, no framework and no bundler |
+
+The interesting problem was **smoothing**. Raw landmark height is noisy enough to make a
+filter cutoff audibly chatter, but a simple low-pass adds latency that makes the instrument
+feel dead. The One Euro filter (`src/smoothing/one-euro.js`) adapts its cutoff to the speed
+of the movement — heavy smoothing when the hand is still, light when it's moving — which is
+what makes slow gestures stable and fast ones responsive.
+
+## Design
+
+The interface follows a documented design system — **Hyperstudio**, *"blueprint scratched
+into obsidian"* — specified in [`design.md`](design.md): near-black canvas, 1px hairline
+rules instead of shadows, weight-400 type, monospace for every number, and exactly one
+signal colour (`#98ff38`) reserved for live/armed state.
 
 ## Develop
-- `npm test` – run unit tests (Node 18+, built-in runner).
-- `npm run serve` – serve at http://localhost:8000 (use headphones!).
 
-Open in desktop Chrome/Edge, click **Start**, allow camera + mic.
+```bash
+npm test          # 39 unit tests, node:test, no dependencies
+npm run serve     # http://localhost:8000
+npm run test:e2e  # Playwright smoke test
+node tests/visual-check.mjs   # screenshots + responsive/overflow assertions
+```
 
-See `docs/superpowers/specs/` for the design and `docs/superpowers/plans/` for the build plan.
+Unit tests cover the pure layers — smoothing, gesture→value mapping, knob geometry,
+landmark normalization and calibration — which is most of the logic that can actually be
+wrong.
+
+## Structure
+
+```
+src/
+  gestures/    camera source, landmark extraction, synthetic source for tests
+  smoothing/   one-euro filter, debounce
+  mapping/     normalized gesture -> audio parameter
+  audio/       Web Audio graph, recorder, impulse response
+  calibration/ per-hand reach capture + stored profile
+  ui/          control panel, dials, overlay, meters, onboarding, grab cursors
+```
+
+## Browser support
+
+Needs `getUserMedia` and Web Audio: desktop Chrome or Edge. Served over HTTPS (camera access
+requires a secure context). The layout is responsive down to 375px, though a phone's
+front camera makes two-handed gestures impractical in practice.

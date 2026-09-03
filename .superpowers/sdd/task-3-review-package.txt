@@ -1,0 +1,88 @@
+﻿=== RANGE 73ab00c..HEAD ===
+
+=== COMMITS ===
+6bb4623 feat: debounce + hysteresis for discrete gesture states
+
+=== STAT ===
+ src/smoothing/debounce.js | 35 +++++++++++++++++++++++++++++++++++
+ tests/debounce.test.js    | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+)
+
+=== DIFF (-U10) ===
+diff --git a/src/smoothing/debounce.js b/src/smoothing/debounce.js
+new file mode 100644
+index 0000000..8434c7b
+--- /dev/null
++++ b/src/smoothing/debounce.js
+@@ -0,0 +1,35 @@
++export class Debounced {
++  constructor(framesToConfirm = 4, initial = null) {
++    this.n = framesToConfirm;
++    this.committed = initial;
++    this.candidate = initial;
++    this.count = 0;
++  }
++  push(value) {
++    if (value === this.candidate) {
++      this.count++;
++    } else {
++      this.candidate = value;
++      this.count = 1;
++    }
++    if (this.count >= this.n) this.committed = this.candidate;
++    return this.committed;
++  }
++}
++
++export class Hysteresis {
++  constructor(enter, exit, initial = false) {
++    if (exit > enter) throw new Error('Hysteresis: exit must be <= enter');
++    this.enter = enter;
++    this.exit = exit;
++    this.state = initial;
++  }
++  update(x) {
++    if (this.state) {
++      if (x <= this.exit) this.state = false;
++    } else if (x >= this.enter) {
++      this.state = true;
++    }
++    return this.state;
++  }
++}
+diff --git a/tests/debounce.test.js b/tests/debounce.test.js
+new file mode 100644
+index 0000000..10b7992
+--- /dev/null
++++ b/tests/debounce.test.js
+@@ -0,0 +1,30 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { Debounced, Hysteresis } from '../src/smoothing/debounce.js';
++
++test('Debounced commits only after N identical pushes', () => {
++  const d = new Debounced(3, 0);
++  assert.equal(d.push(1), 0);
++  assert.equal(d.push(1), 0);
++  assert.equal(d.push(1), 1); // 3rd identical -> commit
++});
++
++test('Debounced flicker resets the streak', () => {
++  const d = new Debounced(3, 0);
++  d.push(1); d.push(1);
++  assert.equal(d.push(2), 0); // changed candidate, streak resets, not committed
++  d.push(2);
++  assert.equal(d.push(2), 2);
++});
++
++test('Hysteresis uses separate enter/exit thresholds', () => {
++  const h = new Hysteresis(0.6, 0.4, false);
++  assert.equal(h.update(0.5), false); // below enter
++  assert.equal(h.update(0.65), true); // crosses enter
++  assert.equal(h.update(0.5), true);  // between exit and enter -> holds
++  assert.equal(h.update(0.3), false); // below exit
++});
++
++test('Hysteresis rejects exit > enter', () => {
++  assert.throws(() => new Hysteresis(0.4, 0.6));
++});

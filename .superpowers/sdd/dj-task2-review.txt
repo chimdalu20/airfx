@@ -1,0 +1,436 @@
+﻿=== RANGE feafebb..HEAD ===
+
+=== COMMITS ===
+a78cf2d feat(ui): Task 2 — DJ deck bar (strips, crossfader, focus, library)
+
+=== STAT ===
+ index.html      |   7 +--
+ src/ui/decks.js | 180 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ styles.css      | 185 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 367 insertions(+), 5 deletions(-)
+
+=== DIFF (-U6) ===
+diff --git a/index.html b/index.html
+index 4172095..1dcb670 100644
+--- a/index.html
++++ b/index.html
+@@ -19,29 +19,26 @@
+   <div id="startScreen" class="overlay">
+     <button id="startBtn">Start (allow camera)</button>
+     <p id="startError" class="error" hidden></p>
+   </div>
+ 
+   <main id="app" hidden>
++    <section id="deckbar" class="deckbar"></section>
++
+     <section class="col col-left">
+       <h2 class="col-title">◀ Left hand</h2>
+       <div id="rackLeft" class="rack"></div>
+     </section>
+ 
+     <section class="col col-center">
+       <div class="stage">
+         <video id="video" playsinline muted></video>
+         <canvas id="overlay"></canvas>
+         <div id="status" class="status"></div>
+         <div class="stage-tag">You (mirrored)</div>
+       </div>
+-      <div class="transport">
+-        <label class="upload" for="trackFile">📁 Upload a track</label>
+-        <input type="file" id="trackFile" accept="audio/*" hidden />
+-        <audio id="track" controls loop></audio>
+-      </div>
+       <div class="modes">
+         <button id="modeAir" class="mode-btn on">✋ Air</button>
+         <button id="modeGrab" class="mode-btn">🤏 Grab</button>
+       </div>
+       <div class="actions">
+         <button id="calibrateBtn">Calibrate</button>
+diff --git a/src/ui/decks.js b/src/ui/decks.js
+new file mode 100644
+index 0000000..564c5b3
+--- /dev/null
++++ b/src/ui/decks.js
+@@ -0,0 +1,180 @@
++/**
++ * createDeckBar — DJ UI: Deck A | crossfader + focus | Deck B + library chip row
++ *
++ * @param {HTMLElement} rootEl  - container element (section#deckbar)
++ * @param {{
++ *   onAddFiles: (FileList) => void,
++ *   onLoadToFocused: (File) => void,
++ *   onFocus: (slot: 'a'|'b') => void,
++ *   onCrossfade: (value: number) => void,
++ *   onPlayToggle: (slot: 'a'|'b') => void,
++ * }} callbacks
++ * @returns {{
++ *   setDeck: (slot: 'a'|'b', {name: string, playing: boolean}) => void,
++ *   setFocus: (slot: 'a'|'b') => void,
++ *   setLibrary: (files: File[]) => void,
++ *   getCrossfade: () => number,
++ * }}
++ */
++export function createDeckBar(rootEl, {
++  onAddFiles,
++  onLoadToFocused,
++  onFocus,
++  onCrossfade,
++  onPlayToggle,
++}) {
++  // ── Build DOM ─────────────────────────────────────────────────────────────
++
++  rootEl.innerHTML = '';
++
++  // Top strip: Deck A | center controls | Deck B
++  const strip = el('div', 'db-strip');
++  rootEl.appendChild(strip);
++
++  // Deck A
++  const { panel: panelA, nameEl: nameA, playBtn: playA } = makeDeck('A', () => onPlayToggle('a'));
++  strip.appendChild(panelA);
++
++  // Center column: crossfader + focus
++  const center = el('div', 'db-center');
++  strip.appendChild(center);
++
++  const cfLabel = el('div', 'db-cf-label');
++  cfLabel.textContent = 'A ← crossfade → B';
++  center.appendChild(cfLabel);
++
++  const crossfader = document.createElement('input');
++  crossfader.type = 'range';
++  crossfader.min = '0';
++  crossfader.max = '1';
++  crossfader.step = '0.01';
++  crossfader.value = '0.5';
++  crossfader.className = 'db-crossfader';
++  crossfader.addEventListener('input', () => onCrossfade(parseFloat(crossfader.value)));
++  center.appendChild(crossfader);
++
++  const focusRow = el('div', 'db-focus-row');
++  center.appendChild(focusRow);
++
++  const focusLabel = el('span', 'db-focus-label');
++  focusLabel.textContent = 'Focus';
++  focusRow.appendChild(focusLabel);
++
++  const focusBtnA = document.createElement('button');
++  focusBtnA.textContent = 'A';
++  focusBtnA.className = 'db-focus-btn db-focus-a';
++  focusBtnA.addEventListener('click', () => onFocus('a'));
++  focusRow.appendChild(focusBtnA);
++
++  const focusBtnB = document.createElement('button');
++  focusBtnB.textContent = 'B';
++  focusBtnB.className = 'db-focus-btn db-focus-b';
++  focusBtnB.addEventListener('click', () => onFocus('b'));
++  focusRow.appendChild(focusBtnB);
++
++  // Deck B
++  const { panel: panelB, nameEl: nameB, playBtn: playB } = makeDeck('B', () => onPlayToggle('b'));
++  strip.appendChild(panelB);
++
++  // Library row
++  const libraryRow = el('div', 'db-library');
++  rootEl.appendChild(libraryRow);
++
++  const fileInput = document.createElement('input');
++  fileInput.type = 'file';
++  fileInput.accept = 'audio/*';
++  fileInput.multiple = true;
++  fileInput.id = 'deckLibraryFile';
++  fileInput.style.display = 'none';
++  fileInput.addEventListener('change', () => {
++    if (fileInput.files && fileInput.files.length > 0) {
++      onAddFiles(fileInput.files);
++      fileInput.value = ''; // reset so same file can be re-added
++    }
++  });
++  libraryRow.appendChild(fileInput);
++
++  const addLabel = document.createElement('label');
++  addLabel.htmlFor = 'deckLibraryFile';
++  addLabel.className = 'db-add-btn';
++  addLabel.textContent = '＋ Add tracks';
++  libraryRow.appendChild(addLabel);
++
++  const chipList = el('div', 'db-chip-list');
++  libraryRow.appendChild(chipList);
++
++  // ── Public API ────────────────────────────────────────────────────────────
++
++  function setDeck(slot, { name, playing }) {
++    if (slot === 'a') {
++      nameA.textContent = name || '— no track —';
++      playA.textContent = playing ? '⏸' : '▶';
++      panelA.classList.toggle('db-deck--playing', !!playing);
++    } else {
++      nameB.textContent = name || '— no track —';
++      playB.textContent = playing ? '⏸' : '▶';
++      panelB.classList.toggle('db-deck--playing', !!playing);
++    }
++  }
++
++  function setFocus(slot) {
++    focusBtnA.classList.toggle('db-focus-btn--on', slot === 'a');
++    focusBtnB.classList.toggle('db-focus-btn--on', slot === 'b');
++    panelA.classList.toggle('db-deck--focused', slot === 'a');
++    panelB.classList.toggle('db-deck--focused', slot === 'b');
++  }
++
++  function setLibrary(files) {
++    chipList.innerHTML = '';
++    for (const file of files) {
++      const chip = document.createElement('button');
++      chip.className = 'db-chip';
++      chip.textContent = file.name.replace(/\.[^.]+$/, ''); // strip extension
++      chip.title = file.name;
++      chip.addEventListener('click', () => onLoadToFocused(file));
++      chipList.appendChild(chip);
++    }
++  }
++
++  function getCrossfade() {
++    return parseFloat(crossfader.value);
++  }
++
++  // Set initial focus to A
++  setFocus('a');
++  setDeck('a', { name: '', playing: false });
++  setDeck('b', { name: '', playing: false });
++
++  return { setDeck, setFocus, setLibrary, getCrossfade };
++}
++
++// ── Helpers ──────────────────────────────────────────────────────────────────
++
++function el(tag, className) {
++  const node = document.createElement(tag);
++  if (className) node.className = className;
++  return node;
++}
++
++function makeDeck(label, onPlayToggle) {
++  const panel = el('div', 'db-deck');
++  panel.dataset.slot = label.toLowerCase();
++
++  const header = el('div', 'db-deck-header');
++  const slotLabel = el('span', 'db-deck-slot');
++  slotLabel.textContent = `Deck ${label}`;
++  header.appendChild(slotLabel);
++  panel.appendChild(header);
++
++  const nameEl = el('div', 'db-deck-name');
++  nameEl.textContent = '— no track —';
++  panel.appendChild(nameEl);
++
++  const playBtn = document.createElement('button');
++  playBtn.className = 'db-play-btn';
++  playBtn.textContent = '▶';
++  playBtn.addEventListener('click', onPlayToggle);
++  panel.appendChild(playBtn);
++
++  return { panel, nameEl, playBtn };
++}
+diff --git a/styles.css b/styles.css
+index 96c9109..3bd7456 100644
+--- a/styles.css
++++ b/styles.css
+@@ -143,12 +143,197 @@ select#preset { background: #1b2029; color: var(--text); border: 1px solid var(-
+ 
+ /* Mode toggle (Air vs Grab) */
+ .modes { display: flex; gap: .4rem; }
+ .mode-btn { flex: 1; background: #1b2029; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: .5rem; font-weight: 700; cursor: pointer; }
+ .mode-btn.on { background: linear-gradient(180deg, #37e0cf, #2bb6a8); color: #06121a; border-color: transparent; }
+ 
++/* ── Deck bar ─────────────────────────────────────────────────────────────── */
++.deckbar {
++  width: 100%;
++  background: var(--panel);
++  border: 1px solid var(--line);
++  border-radius: 14px;
++  padding: .75rem .9rem;
++  display: flex;
++  flex-direction: column;
++  gap: .6rem;
++  min-width: 0;
++  flex: 0 0 auto;         /* don't grow/shrink with the column flex */
++}
++
++/* Strip: Deck A | center | Deck B */
++.db-strip {
++  display: flex;
++  gap: .75rem;
++  align-items: stretch;
++  flex-wrap: wrap;
++  min-width: 0;
++}
++
++/* Individual deck panel */
++.db-deck {
++  flex: 1 1 160px;
++  min-width: 0;
++  background: linear-gradient(180deg, #181d27, #12151c);
++  border: 1px solid var(--line);
++  border-radius: 10px;
++  padding: .6rem .75rem;
++  display: flex;
++  flex-direction: column;
++  gap: .35rem;
++  transition: border-color .2s, box-shadow .2s;
++}
++.db-deck--focused {
++  border-color: rgba(55,224,207,.5);
++  box-shadow: 0 0 0 1px rgba(55,224,207,.18), 0 6px 20px rgba(0,0,0,.4), 0 0 20px rgba(55,224,207,.1);
++}
++.db-deck--playing .db-play-btn {
++  color: #37e0cf;
++}
++
++.db-deck-header {
++  display: flex;
++  align-items: center;
++  gap: .4rem;
++}
++.db-deck-slot {
++  font-size: .65rem;
++  font-weight: 700;
++  letter-spacing: .15em;
++  text-transform: uppercase;
++  color: var(--muted);
++}
++.db-deck-name {
++  font-size: .82rem;
++  font-weight: 600;
++  color: var(--text);
++  white-space: nowrap;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  min-width: 0;
++}
++.db-play-btn {
++  align-self: flex-start;
++  background: #1b2029;
++  color: var(--text);
++  border: 1px solid var(--line);
++  border-radius: 8px;
++  padding: .3rem .7rem;
++  cursor: pointer;
++  font-size: .9rem;
++  font-weight: 700;
++  transition: background .15s, color .15s;
++}
++.db-play-btn:hover { background: #232a36; }
++
++/* Center: crossfader + focus */
++.db-center {
++  flex: 1 1 180px;
++  min-width: 0;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  gap: .4rem;
++}
++.db-cf-label {
++  font-size: .62rem;
++  letter-spacing: .1em;
++  text-transform: uppercase;
++  color: var(--muted);
++}
++.db-crossfader {
++  width: 100%;
++  max-width: 220px;
++  accent-color: #37e0cf;
++  cursor: pointer;
++}
++
++/* Focus row */
++.db-focus-row {
++  display: flex;
++  align-items: center;
++  gap: .35rem;
++}
++.db-focus-label {
++  font-size: .65rem;
++  font-weight: 700;
++  letter-spacing: .12em;
++  text-transform: uppercase;
++  color: var(--muted);
++}
++.db-focus-btn {
++  background: #1b2029;
++  color: var(--muted);
++  border: 1px solid var(--line);
++  border-radius: 8px;
++  padding: .28rem .65rem;
++  cursor: pointer;
++  font-weight: 700;
++  font-size: .82rem;
++  transition: background .15s, color .15s, border-color .15s;
++}
++.db-focus-btn:hover { color: var(--text); }
++.db-focus-btn--on {
++  background: linear-gradient(180deg, #37e0cf, #2bb6a8);
++  color: #06121a;
++  border-color: transparent;
++}
++
++/* Library row */
++.db-library {
++  display: flex;
++  align-items: center;
++  gap: .5rem;
++  flex-wrap: wrap;
++  min-width: 0;
++}
++.db-add-btn {
++  display: inline-block;
++  font-size: .82rem;
++  font-weight: 700;
++  color: #06121a;
++  background: linear-gradient(180deg, #8fa6ff, #4f9bff);
++  border-radius: 9px;
++  padding: .4rem .75rem;
++  cursor: pointer;
++  white-space: nowrap;
++  box-shadow: inset 0 1px 0 rgba(255,255,255,.3);
++  flex-shrink: 0;
++}
++.db-add-btn:hover { filter: brightness(1.07); }
++
++.db-chip-list {
++  display: flex;
++  gap: .35rem;
++  flex-wrap: wrap;
++  min-width: 0;
++}
++.db-chip {
++  background: #1b2029;
++  color: var(--text);
++  border: 1px solid var(--line);
++  border-radius: 999px;
++  padding: .3rem .75rem;
++  font-size: .78rem;
++  font-weight: 600;
++  cursor: pointer;
++  max-width: 160px;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++  transition: background .15s, border-color .15s;
++}
++.db-chip:hover {
++  background: #232a36;
++  border-color: rgba(55,224,207,.35);
++  color: #37e0cf;
++}
++
++/* ── End deck bar ─────────────────────────────────────────────────────────── */
++
+ /* Grab-mode virtual-hand cursors */
+ .grab-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
+ .grab-cursor { position: fixed; transform: translate(-50%, -50%); display: grid; place-items: center; pointer-events: none; }
+ .grab-cursor .gc-ring { width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--c); box-shadow: 0 0 12px var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: width .08s, height .08s, background .08s; }
+ .grab-cursor .gc-label { position: absolute; font-size: .65rem; font-weight: 800; color: var(--c); }
+ .grab-cursor.left { --c: #8fb0ff; }

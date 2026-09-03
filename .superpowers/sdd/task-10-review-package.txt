@@ -1,0 +1,126 @@
+﻿=== RANGE 0ca91d5..HEAD ===
+
+=== COMMITS ===
+2629889 feat: animated controls rack (knobs reflect snapshot)
+
+=== STAT ===
+ src/ui/controls-panel.js     | 57 ++++++++++++++++++++++++++++++++++++++++++++
+ styles.css                   | 10 +++++++-
+ tests/controls-panel.test.js | 16 +++++++++++++
+ 3 files changed, 82 insertions(+), 1 deletion(-)
+
+=== DIFF (-U10) ===
+diff --git a/src/ui/controls-panel.js b/src/ui/controls-panel.js
+new file mode 100644
+index 0000000..d6a1744
+--- /dev/null
++++ b/src/ui/controls-panel.js
+@@ -0,0 +1,57 @@
++import { snapshotToDisplay, valueToAngle } from './knob-geometry.js';
++import { KNOB } from '../config.js';
++
++// Pure: snapshot -> per-knob angles (degrees) + active flags. Unit-tested.
++export function computeDialAngles(snapshot) {
++  const d = snapshotToDisplay(snapshot);
++  const a = (v) => valueToAngle(v, KNOB.sweepDeg);
++  return {
++    filter: { cutoff: a(d.filter.cutoff), active: true },
++    reverb: { wet: a(d.reverb.wet), active: d.reverb.active },
++    delay: { mix: a(d.delay.mix), feedback: a(d.delay.feedback), active: d.delay.active },
++    tremolo: { rate: a(d.tremolo.rate), depth: a(d.tremolo.depth), active: d.tremolo.active },
++  };
++}
++
++const LAYOUT = [
++  { key: 'filter', title: 'Filter', knobs: [['cutoff', 'Cutoff']] },
++  { key: 'reverb', title: 'Reverb', knobs: [['wet', 'Amount']] },
++  { key: 'delay', title: 'Delay', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
++  { key: 'tremolo', title: 'Tremolo', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
++];
++
++export function createControlsPanel(rootEl) {
++  const dials = {};
++  const groups = {};
++  for (const fx of LAYOUT) {
++    const card = document.createElement('div');
++    card.className = 'fx';
++    card.innerHTML = `<h3>${fx.title}</h3><div class="knobs"></div>`;
++    const knobsEl = card.querySelector('.knobs');
++    for (const [knobKey, label] of fx.knobs) {
++      const k = document.createElement('div');
++      k.className = 'knob';
++      k.innerHTML = `<div class="dial"></div><span>${label}</span>`;
++      knobsEl.appendChild(k);
++      dials[`${fx.key}.${knobKey}`] = k.querySelector('.dial');
++    }
++    rootEl.appendChild(card);
++    groups[fx.key] = card;
++  }
++
++  function update(snapshot) {
++    const angles = computeDialAngles(snapshot);
++    for (const fx of LAYOUT) {
++      groups[fx.key].classList.toggle('active', !!angles[fx.key].active);
++      for (const [knobKey] of fx.knobs) {
++        const dial = dials[`${fx.key}.${knobKey}`];
++        dial.style.setProperty('--angle', `${angles[fx.key][knobKey]}deg`);
++        const after = `rotate(${angles[fx.key][knobKey]}deg)`;
++        dial.style.transform = ''; // dial itself stays; pointer is the ::after pseudo
++        dial.dataset.angle = angles[fx.key][knobKey].toFixed(1);
++      }
++    }
++  }
++
++  return { update };
++}
+diff --git a/styles.css b/styles.css
+index 86e140f..9085c83 100644
+--- a/styles.css
++++ b/styles.css
+@@ -11,15 +11,23 @@ main { display: flex; gap: 1rem; padding: 1rem; flex-wrap: wrap; }
+ video, #overlay { width: 100%; height: auto; border-radius: 10px; transform: scaleX(-1); display: block; }
+ #overlay { position: absolute; inset: 0; }
+ .side { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
+ #rack { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .8rem; }
+ .fx { background: #1e2027; border-radius: 10px; padding: .8rem; opacity: .45; transition: opacity .15s; }
+ .fx.active { opacity: 1; outline: 1px solid #4f7cff; }
+ .fx h3 { margin: 0 0 .5rem; font-size: .9rem; }
+ .knobs { display: flex; gap: .8rem; flex-wrap: wrap; }
+ .knob { text-align: center; font-size: .7rem; }
+ .dial { width: 52px; height: 52px; border-radius: 50%; background: #2b2e38; position: relative; margin: 0 auto .25rem; }
+-.dial::after { content: ""; position: absolute; left: 50%; top: 6px; width: 3px; height: 18px; background: #8fb0ff; transform-origin: 50% 20px; transform: translateX(-50%) rotate(0deg); }
++.dial::after {
++  content: "";
++  position: absolute;
++  left: 50%; top: 6px;
++  width: 3px; height: 18px;
++  background: #8fb0ff;
++  transform-origin: 50% 20px;
++  transform: translateX(-50%) rotate(var(--angle, 0deg));
++}
+ .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+ button { background: #2b2e38; color: #e8e8ea; border: 0; border-radius: 8px; padding: .5rem .8rem; cursor: pointer; }
+ button.danger { background: #6a2330; }
+ #meters { font-size: .8rem; line-height: 1.5; background: #1e2027; border-radius: 10px; padding: .6rem; }
+diff --git a/tests/controls-panel.test.js b/tests/controls-panel.test.js
+new file mode 100644
+index 0000000..84e5500
+--- /dev/null
++++ b/tests/controls-panel.test.js
+@@ -0,0 +1,16 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { computeDialAngles } from '../src/ui/controls-panel.js';
++
++test('computeDialAngles maps a full snapshot to centered angles', () => {
++  const angles = computeDialAngles({
++    filter: { cutoff: 12000, q: 1 },
++    reverb: { wet: 0.9, active: true },
++    delay: { mix: 0.5, time: 0.28, feedback: 0.55, active: true },
++    tremolo: { rate: 12, depth: 1, active: true },
++  });
++  assert.ok(Math.abs(angles.filter.cutoff - 135) < 1e-6);   // max -> +135
++  assert.ok(Math.abs(angles.reverb.wet - 135) < 1e-6);
++  assert.ok(Math.abs(angles.tremolo.depth - 135) < 1e-6);
++  assert.equal(angles.delay.active, true);
++});

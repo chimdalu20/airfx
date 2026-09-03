@@ -1,0 +1,62 @@
+﻿=== RANGE fb1afa4..HEAD ===
+
+=== COMMITS ===
+ce3a582 feat: calibration profile + per-user normalization
+
+=== STAT ===
+ src/calibration/profile.js | 14 ++++++++++++++
+ tests/profile.test.js      | 25 +++++++++++++++++++++++++
+ 2 files changed, 39 insertions(+)
+
+=== DIFF (-U10) ===
+diff --git a/src/calibration/profile.js b/src/calibration/profile.js
+new file mode 100644
+index 0000000..0b4b621
+--- /dev/null
++++ b/src/calibration/profile.js
+@@ -0,0 +1,14 @@
++import { normalize } from '../math.js';
++
++const DEFAULT_HAND = { sizeNear: 0.45, sizeFar: 0.15, heightLow: 0.1, heightHigh: 0.9 };
++
++export const DEFAULT_PROFILE = {
++  left: { ...DEFAULT_HAND },
++  right: { ...DEFAULT_HAND },
++};
++
++export function applyCalibration({ height, size }, cal) {
++  const heightNorm = normalize(height, cal.heightLow, cal.heightHigh);
++  const distanceNorm = 1 - normalize(size, cal.sizeFar, cal.sizeNear);
++  return { heightNorm, distanceNorm };
++}
+diff --git a/tests/profile.test.js b/tests/profile.test.js
+new file mode 100644
+index 0000000..800b6e2
+--- /dev/null
++++ b/tests/profile.test.js
+@@ -0,0 +1,25 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { DEFAULT_PROFILE, applyCalibration } from '../src/calibration/profile.js';
++
++const cal = { sizeNear: 0.45, sizeFar: 0.15, heightLow: 0.1, heightHigh: 0.9 };
++
++test('distanceNorm: near=0, far=1, mid=0.5', () => {
++  assert.equal(applyCalibration({ height: 0.5, size: 0.45 }, cal).distanceNorm, 0);
++  assert.equal(applyCalibration({ height: 0.5, size: 0.15 }, cal).distanceNorm, 1);
++  assert.ok(Math.abs(applyCalibration({ height: 0.5, size: 0.30 }, cal).distanceNorm - 0.5) < 1e-9);
++});
++
++test('heightNorm: low=0, high=1', () => {
++  assert.equal(applyCalibration({ height: 0.1, size: 0.3 }, cal).heightNorm, 0);
++  assert.equal(applyCalibration({ height: 0.9, size: 0.3 }, cal).heightNorm, 1);
++});
++
++test('values clamp outside the calibrated range', () => {
++  assert.equal(applyCalibration({ height: 1.0, size: 0.6 }, cal).distanceNorm, 0); // bigger than near
++  assert.equal(applyCalibration({ height: 0.0, size: 0.3 }, cal).heightNorm, 0);
++});
++
++test('DEFAULT_PROFILE has both hands', () => {
++  assert.ok(DEFAULT_PROFILE.left && DEFAULT_PROFILE.right);
++});

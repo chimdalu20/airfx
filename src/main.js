@@ -73,7 +73,7 @@ async function start() {
     recordBtn.addEventListener('click', async () => {
       if (!recorder.active) {
         recorder.start();
-        recordBtn.textContent = '■ Stop';
+        recordBtn.textContent = 'Stop';
         recordBtn.classList.add('danger');
       } else {
         try {
@@ -85,7 +85,7 @@ async function start() {
           a.click();
           URL.revokeObjectURL(url);
         } finally {
-          recordBtn.textContent = '● Record';
+          recordBtn.textContent = 'Record';
           recordBtn.classList.remove('danger');
         }
       }
@@ -148,7 +148,7 @@ async function start() {
         rack.update(snapshot);
         overlay.draw(frame._landmarks || []);
       } catch (err) {
-        if (debugEl) { debugEl.classList.add('err'); debugEl.textContent = `⚠ render: ${err.message}`; }
+        if (debugEl) { debugEl.classList.add('err'); debugEl.textContent = `render: ${err.message}`; }
         console.error(err);
       }
     });

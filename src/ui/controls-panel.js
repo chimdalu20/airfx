@@ -15,11 +15,11 @@ export function computeDialAngles(snapshot) {
 }
 
 const LAYOUT = [
-  { key: 'filter', title: 'Filter', hand: 'left', accent: '#37e0cf', knobs: [['cutoff', 'Cutoff']] },
-  { key: 'reverb', title: 'Reverb', hand: 'left', accent: '#9b7bff', knobs: [['wet', 'Amount']] },
-  { key: 'delay', title: 'Delay', hand: 'left', accent: '#4f9bff', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
-  { key: 'tremolo', title: 'Tremolo', hand: 'right', accent: '#ffb14e', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
-  { key: 'compressor', title: 'Compressor', hand: 'right', accent: '#5fd38a', knobs: [['amount', 'Amount']] },
+  { key: 'filter', title: 'Filter', hand: 'left', knobs: [['cutoff', 'Cutoff']] },
+  { key: 'reverb', title: 'Reverb', hand: 'left', knobs: [['wet', 'Amount']] },
+  { key: 'delay', title: 'Delay', hand: 'left', knobs: [['mix', 'Mix'], ['feedback', 'Feedback']] },
+  { key: 'tremolo', title: 'Tremolo', hand: 'right', knobs: [['rate', 'Rate'], ['depth', 'Depth']] },
+  { key: 'compressor', title: 'Compressor', hand: 'right', knobs: [['amount', 'Amount']] },
 ];
 
 const pct = (v) => `${Math.round(v * 100)}%`;
@@ -76,7 +76,6 @@ export function createControlsPanel(leftEl, rightEl = leftEl) {
   for (const fx of LAYOUT) {
     const card = document.createElement('div');
     card.className = 'fx active';
-    card.style.setProperty('--accent', fx.accent);
     card.title = 'Click to enable / disable';
     const knobs = fx.knobs.map(([k, label]) => knobMarkup(`${fx.key}.${k}`, label)).join('');
     card.innerHTML = `<h3>${fx.title}<span class="pwr">ON</span></h3><div class="knobs">${knobs}</div>`;

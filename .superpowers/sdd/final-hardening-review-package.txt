@@ -1,0 +1,127 @@
+﻿=== RANGE 97b6ade..HEAD (hardening fix) ===
+
+=== COMMITS ===
+90a47b4 harden: recorder stop guard, record-button try/finally, mic-track + preset a11y guards
+
+=== STAT ===
+ index.html            |  2 +-
+ src/audio/recorder.js |  3 +++
+ src/main.js           | 24 ++++++++++++++----------
+ 3 files changed, 18 insertions(+), 11 deletions(-)
+
+=== DIFF (-U10) ===
+diff --git a/index.html b/index.html
+index c307543..5bc0576 100644
+--- a/index.html
++++ b/index.html
+@@ -25,18 +25,18 @@
+       <video id="video" playsinline muted></video>
+       <canvas id="overlay"></canvas>
+     </section>
+     <aside class="side">
+       <div id="meters"></div>
+       <div id="rack"></div>
+       <div class="actions">
+         <button id="calibrateBtn">Calibrate</button>
+         <button id="recordBtn">⏺ Record</button>
+         <button id="panicBtn" class="danger">Mute</button>
+-        <select id="preset"><option>Lush</option><option>Subtle</option><option>Extreme</option></select>
++        <select id="preset" aria-label="Preset"><option>Lush</option><option>Subtle</option><option>Extreme</option></select>
+       </div>
+     </aside>
+   </main>
+ 
+   <script type="module" src="src/main.js"></script>
+ </body>
+ </html>
+diff --git a/src/audio/recorder.js b/src/audio/recorder.js
+index 16e172d..c960636 100644
+--- a/src/audio/recorder.js
++++ b/src/audio/recorder.js
+@@ -5,18 +5,21 @@ export function createRecorder(stream) {
+   let rec = null;
+   let chunks = [];
+   return {
+     start() {
+       chunks = [];
+       rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+       rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+       rec.start();
+     },
+     stop() {
++      if (!rec || rec.state === 'inactive') {
++        return Promise.resolve(new Blob([], { type: mimeType || 'audio/webm' }));
++      }
+       return new Promise((resolve) => {
+         rec.onstop = () => resolve(new Blob(chunks, { type: mimeType || 'audio/webm' }));
+         rec.stop();
+       });
+     },
+     get active() { return !!rec && rec.state === 'recording'; },
+   };
+ }
+diff --git a/src/main.js b/src/main.js
+index d8964e1..8029fab 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -49,46 +49,50 @@ const startError = document.getElementById('startError');
+ 
+ async function start() {
+   startError.hidden = true;
+   try {
+     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+       throw new Error('Camera/mic need HTTPS or localhost. Serve over a secure origin.');
+     }
+     const audioStream = await navigator.mediaDevices.getUserMedia({
+       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+     });
+-    const ms = audioStream.getAudioTracks()[0].getSettings();
++    const track0 = audioStream.getAudioTracks()[0];
++    const ms = track0 ? track0.getSettings() : {};
+     if (ms.echoCancellation || ms.noiseSuppression || ms.autoGainControl) {
+       document.getElementById('warn').textContent =
+         '🎧 Use headphones. (Browser kept echo/noise processing on – headphones still fix it.)';
+     }
+     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+     await ctx.resume();
+     const engine = createAudioEngine(ctx, audioStream);
+ 
+     const recorder = createRecorder(engine.recorderStream);
+     const recordBtn = document.getElementById('recordBtn');
+     recordBtn.addEventListener('click', async () => {
+       if (!recorder.active) {
+         recorder.start();
+         recordBtn.textContent = '■ Stop';
+         recordBtn.classList.add('danger');
+       } else {
+-        const blob = await recorder.stop();
+-        recordBtn.textContent = '● Record';
+-        recordBtn.classList.remove('danger');
+-        const url = URL.createObjectURL(blob);
+-        const a = document.createElement('a');
+-        a.href = url;
+-        a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+-        a.click();
+-        URL.revokeObjectURL(url);
++        try {
++          const blob = await recorder.stop();
++          const url = URL.createObjectURL(blob);
++          const a = document.createElement('a');
++          a.href = url;
++          a.download = `airfx-take.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
++          a.click();
++          URL.revokeObjectURL(url);
++        } finally {
++          recordBtn.textContent = '● Record';
++          recordBtn.classList.remove('danger');
++        }
+       }
+     });
+ 
+     const video = document.getElementById('video');
+     const camera = new CameraGestureSource(video);
+     await camera.init();
+ 
+     const saved = loadProfile();
+     if (saved) profile = saved;
+     let latestRaw = null;

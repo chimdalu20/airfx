@@ -1,0 +1,72 @@
+﻿=== RANGE f1d0898..HEAD ===
+
+=== COMMITS ===
+17fe87f feat: robustness (secure context, mic verify, lost-tracking hold, FPS)
+
+=== STAT ===
+ src/main.js | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+=== DIFF (-U10) ===
+diff --git a/src/main.js b/src/main.js
+index bcdf70a..0e36e1f 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -35,23 +35,31 @@ function makeHandPipeline(side) {
+     return out;
+   };
+ }
+ 
+ const startBtn = document.getElementById('startBtn');
+ const startError = document.getElementById('startError');
+ 
+ async function start() {
+   startError.hidden = true;
+   try {
++    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
++      throw new Error('Camera/mic need HTTPS or localhost. Serve over a secure origin.');
++    }
+     const audioStream = await navigator.mediaDevices.getUserMedia({
+       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+     });
++    const ms = audioStream.getAudioTracks()[0].getSettings();
++    if (ms.echoCancellation || ms.noiseSuppression || ms.autoGainControl) {
++      document.getElementById('warn').textContent =
++        '🎧 Use headphones. (Browser kept echo/noise processing on – headphones still fix it.)';
++    }
+     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+     await ctx.resume();
+     const engine = createAudioEngine(ctx, audioStream);
+ 
+     const recorder = createRecorder(engine.recorderStream);
+     const recordBtn = document.getElementById('recordBtn');
+     recordBtn.addEventListener('click', async () => {
+       if (!recorder.active) {
+         recorder.start();
+         recordBtn.textContent = '■ Stop';
+@@ -82,20 +90,25 @@ async function start() {
+     const overlay = createOverlay(document.getElementById('overlay'), video);
+ 
+     const leftPipe = makeHandPipeline('left');
+     const rightPipe = makeHandPipeline('right');
+ 
+     document.getElementById('startScreen').hidden = true;
+     document.getElementById('app').hidden = false;
+ 
+     camera.start((frame) => {
+       latestRaw = frame;
++      // FPS sampling
++      window.__airfx_fps = window.__airfx_fps || { last: frame.tMs, n: 0, fps: 0 };
++      const F = window.__airfx_fps;
++      F.n++;
++      if (frame.tMs - F.last > 1000) { F.fps = F.n; F.n = 0; F.last = frame.tMs; if (F.fps < 15) console.warn('Low FPS:', F.fps); }
+       const signals = { left: leftPipe(frame.left, frame.tMs), right: rightPipe(frame.right, frame.tMs) };
+       const snapshot = mapSignalsToSnapshot(signals);
+       engine.apply(snapshot);
+       rack.update(snapshot);
+       meters.update(signals);
+       overlay.draw(frame._landmarks || []);
+     });
+ 
+     document.getElementById('panicBtn').addEventListener('click', () => engine.panic());
+     document.getElementById('calibrateBtn').addEventListener('click', async () => {

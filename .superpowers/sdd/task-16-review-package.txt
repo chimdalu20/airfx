@@ -1,0 +1,56 @@
+﻿=== RANGE 17fe87f..HEAD ===
+
+=== COMMITS ===
+c767bda test: Playwright smoke test for the controls rack
+
+=== STAT ===
+ package.json            |  3 ++-
+ tests/e2e/smoke.spec.js | 22 ++++++++++++++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+=== DIFF (-U10) ===
+diff --git a/package.json b/package.json
+index bc8aaeb..a3f82b5 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,11 @@
+ {
+   "name": "airfx",
+   "version": "0.1.0",
+   "private": true,
+   "type": "module",
+   "scripts": {
+     "test": "node --test tests/**/*.test.js",
+-    "serve": "npx --yes serve -l 8000 ."
++    "serve": "npx --yes serve -l 8000 .",
++    "test:e2e": "npx --yes playwright test tests/e2e"
+   }
+ }
+diff --git a/tests/e2e/smoke.spec.js b/tests/e2e/smoke.spec.js
+new file mode 100644
+index 0000000..63acd19
+--- /dev/null
++++ b/tests/e2e/smoke.spec.js
+@@ -0,0 +1,22 @@
++import { test, expect } from '@playwright/test';
++
++test('rack renders and a dial rotates from a snapshot', async ({ page }) => {
++  await page.goto('http://localhost:8000');
++  await expect(page.locator('#startBtn')).toBeVisible();
++
++  // Inject the rack directly (no camera/mic in CI) and drive it with a snapshot.
++  const angle = await page.evaluate(async () => {
++    const { createControlsPanel } = await import('/src/ui/controls-panel.js');
++    const root = document.createElement('div');
++    document.body.appendChild(root);
++    const panel = createControlsPanel(root);
++    panel.update({
++      filter: { cutoff: 12000, q: 1 },
++      reverb: { wet: 0.9, active: true },
++      delay: { mix: 0.5, time: 0.28, feedback: 0.55, active: true },
++      tremolo: { rate: 12, depth: 1, active: true },
++    });
++    return root.querySelector('.dial').dataset.angle;
++  });
++  expect(Number(angle)).toBeCloseTo(135, 0);
++});
